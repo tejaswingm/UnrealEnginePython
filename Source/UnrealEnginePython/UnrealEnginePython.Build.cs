@@ -38,6 +38,7 @@ public class UnrealEnginePython : ModuleRules
         PrivateIncludePaths.AddRange(
             new string[] {
                 "UnrealEnginePython/Private",
+                PythonHome
 				// ... add other private include paths required here ...
 			}
             );

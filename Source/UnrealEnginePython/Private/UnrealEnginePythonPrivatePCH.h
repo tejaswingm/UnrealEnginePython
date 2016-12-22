@@ -25,8 +25,8 @@
 #include <Python.h>
 #include <structmember.h>
 #else
-#include <include/Python.h>
-#include <include/structmember.h>
+#include <Include/Python.h>
+#include <Include/structmember.h>
 #endif
 
 #include "UEPyModule.h"
