@@ -38,7 +38,7 @@ public class UnrealEnginePython : ModuleRules
         PrivateIncludePaths.AddRange(
             new string[] {
                 "UnrealEnginePython/Private",
-                PythonHome
+                PythonHome,
 				// ... add other private include paths required here ...
 			}
             );
@@ -49,7 +49,7 @@ public class UnrealEnginePython : ModuleRules
             {
                 "Core",
                 "Sockets",
-                "Networking"
+                "Networking",
 				// ... add other public dependencies that you statically link with here ...
 			}
             );
@@ -65,6 +65,7 @@ public class UnrealEnginePython : ModuleRules
                 "SlateCore",
                 "MovieScene",
                 "LevelSequence",
+                "Projects",
 				// ... add private dependencies that you statically link with here ...
 			}
             );
