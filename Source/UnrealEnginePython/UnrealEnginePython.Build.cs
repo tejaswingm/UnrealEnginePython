@@ -6,14 +6,20 @@ using System.IO;
 public class UnrealEnginePython : ModuleRules
 {
 
-    private string pythonHome = "python35";
-    //private string pythonHome = "python27";
+    //Swap python versions here
+    private string PythonType = "Python35";
+    //private string PythonType = "Python27";
+
+    private string ThirdPartyPath
+    {
+        get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../../ThirdParty/")); }
+    }
 
     protected string PythonHome
     {
         get
         {
-			return Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..",  pythonHome));
+			return Path.GetFullPath(Path.Combine(ThirdPartyPath, PythonType));
 		}
 	}
 
@@ -83,18 +89,18 @@ public class UnrealEnginePython : ModuleRules
         {
             System.Console.WriteLine("Using Python at: " + PythonHome);
             PublicIncludePaths.Add(PythonHome);
-            PublicAdditionalLibraries.Add(Path.Combine(PythonHome, "libs", string.Format("{0}.lib", pythonHome)));
+            PublicAdditionalLibraries.Add(Path.Combine(PythonHome, "Lib", string.Format("{0}.lib", PythonType)));
         }
         else if (Target.Platform == UnrealTargetPlatform.Mac)
         {
-            if (pythonHome == "python35")
+            if (PythonType == "Python35")
             {
                 string mac_python = "/Library/Frameworks/Python.framework/Versions/3.5/";
                 PublicIncludePaths.Add(Path.Combine(mac_python, "include"));
                 PublicAdditionalLibraries.Add(Path.Combine(mac_python, "lib", "libpython3.5m.dylib"));
                 Definitions.Add(string.Format("UNREAL_ENGINE_PYTHON_ON_MAC=3"));
             }
-            else if (pythonHome == "python27") {
+            else if (PythonType == "Python27") {
                 string mac_python = "/Library/Frameworks/Python.framework/Versions/2.7/";
                 PublicIncludePaths.Add(Path.Combine(mac_python, "include"));
                 PublicAdditionalLibraries.Add(Path.Combine(mac_python, "lib", "libpython2.7.dylib"));
@@ -103,12 +109,12 @@ public class UnrealEnginePython : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Linux)
         {
-            if (pythonHome == "python35")
+            if (PythonType == "Python35")
             {
                 PublicIncludePaths.Add("/usr/include/python3.5m");
                 PublicAdditionalLibraries.Add("/usr/lib/python3.5/config-3.5m-x86_64-linux-gnu/libpython3.5.so");
             }
-            else if (pythonHome == "python27") {
+            else if (PythonType == "Python27") {
                 PublicIncludePaths.Add("/usr/include/python2.7");
                 PublicAdditionalLibraries.Add("/usr/lib/python2.7/config-x86_64-linux-gnu/libpython2.7.so");
             }
