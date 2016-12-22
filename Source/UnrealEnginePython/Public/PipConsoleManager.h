@@ -12,7 +12,8 @@ class UPipConsoleManager : public UCheatManager
 {
 	GENERATED_UCLASS_BODY()
 	
+	/* Command to execute pip from ue4 console*/
 	UFUNCTION(Exec)
-	void PyPip(FString Arg1, FString Arg2);
+	void pip(FString Arg1, FString Arg2);
 	
 };
