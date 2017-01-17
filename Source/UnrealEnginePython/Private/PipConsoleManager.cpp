@@ -24,7 +24,8 @@ UPipConsoleManager::UPipConsoleManager(const FObjectInitializer& ObjectInitializ
 #include <stdexcept>
 #include <string>
 
-FString WindowsExecWithResult(const FString& cmd) {
+FString WindowsExecWithResult(const FString& cmd) 
+{
 	FString FinalCommand = cmd;
 	char buffer[128];
 	std::string result = "";
@@ -100,7 +101,5 @@ void UPipConsoleManager::shell(FString Arg1, FString Arg2)
 {
 	UE_LOG(LogTemp, Log, TEXT("platform not supported"));
 }
-
-
 
 #endif

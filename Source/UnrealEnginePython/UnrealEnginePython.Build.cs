@@ -50,6 +50,7 @@ public class UnrealEnginePython : ModuleRules
                 "Core",
                 "Sockets",
                 "Networking",
+                "Projects"
 				// ... add other public dependencies that you statically link with here ...
 			}
             );
@@ -65,7 +66,6 @@ public class UnrealEnginePython : ModuleRules
                 "SlateCore",
                 "MovieScene",
                 "LevelSequence",
-                "Projects",
 				// ... add private dependencies that you statically link with here ...
 			}
             );
