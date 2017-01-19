@@ -90,6 +90,12 @@ void FUnrealEnginePythonModule::StartupModule()
 	PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
 	PyList_Insert(py_path, 0, py_scripts_path);
 
+	/* add the plugin paths - windows only */
+	FString PythonHome = FPaths::Combine(*FPaths::GamePluginsDir(), "UnrealEnginePython/Binaries/Win64");
+	char *python_path = TCHAR_TO_UTF8(*PythonHome);
+	char *site_path = TCHAR_TO_UTF8(*FPaths::Combine(*PythonHome, "Lib/site-packages"));
+	PyList_Insert(py_path, 0, PyUnicode_FromString(python_path));
+	PyList_Insert(py_path, 0, PyUnicode_FromString(site_path));
 
 	UE_LOG(LogPython, Log, TEXT("Python VM initialized: %s"), UTF8_TO_TCHAR(Py_GetVersion()));
 	UE_LOG(LogPython, Log, TEXT("Python Scripts search path: %s"), UTF8_TO_TCHAR(scripts_path));
@@ -166,6 +172,17 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 		return;
 	}
 	Py_DECREF(eval_ret);
+}
+
+void FUnrealEnginePythonModule::AddPathToSysPath(FString Path)
+{
+	PyObject *py_sys = PyImport_ImportModule("sys");
+	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
+	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
+
+	char *charPath = TCHAR_TO_UTF8(*Path);
+	PyObject *py_scripts_path = PyUnicode_FromString(charPath);
+	PyList_Insert(py_path, 0, py_scripts_path);
 }
 
 #undef LOCTEXT_NAMESPACE
