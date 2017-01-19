@@ -174,7 +174,7 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 	Py_DECREF(eval_ret);
 }
 
-void FUnrealEnginePythonModule::AddPathToSysPath(FString Path)
+void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)
 {
 	PyObject *py_sys = PyImport_ImportModule("sys");
 	PyObject *py_sys_dict = PyModule_GetDict(py_sys);

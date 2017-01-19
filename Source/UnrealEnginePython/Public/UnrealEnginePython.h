@@ -41,8 +41,8 @@ public:
 		return FModuleManager::Get().IsModuleLoaded("UnrealEnginePython");
 	}
 
-	//Add specified folder to the systems path (e.g. from external plugins or projects)
-	void AddPathToSysPath(FString Path);
+	//Add specified folder to the python systems path (e.g. from external plugins or projects allowing modular python plugin script content)
+	void AddPathToSysPath(const FString& Path);
 
 private:
 	void *ue_python_gil;
