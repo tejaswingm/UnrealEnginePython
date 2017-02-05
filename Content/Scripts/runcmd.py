@@ -3,8 +3,9 @@
 import subprocess
 import sys
 import unreal_engine as ue
+import _thread as thread
 
-#ue.log(sys.path)
+ue.log(sys.path)
 
 def FolderCommand(folder):
 	#replace backslashes
@@ -24,8 +25,4 @@ def run(process, folder=sys.path[1]):
 
 def Test():
 	#debug test - 
-	run('dir')
-
-def TestPip():
-	#debug test - 
-	run('pip install tensorflow', sys.path[1] + "/Scripts")
+	run('dir')	
