@@ -90,6 +90,12 @@ void FUnrealEnginePythonModule::StartupModule()
 	PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
 	PyList_Insert(py_path, 0, py_scripts_path);
 
+	/* UnrealEnginePython Plugin Content/Scripts path */
+	FString PluginRoot = IPluginManager::Get().FindPlugin("UnrealEnginePython")->GetBaseDir();
+	FString ScriptsPath = FPaths::Combine(PluginRoot, "Content/Scripts");
+	PyObject *py_plugin_scripts_path = PyUnicode_FromString(TCHAR_TO_UTF8(*ScriptsPath));
+	PyList_Insert(py_path, 0, py_plugin_scripts_path);
+
 	/* add the plugin paths - windows only */
 	FString PythonHome = FPaths::Combine(*FPaths::GamePluginsDir(), "UnrealEnginePython/Binaries/Win64");
 	char *python_path = TCHAR_TO_UTF8(*PythonHome);
