@@ -3,7 +3,7 @@ import sys
 from threading import Thread
 
 def pipModuleAction(command, module):
-	cmd.run('pip ' + command + ' ' + module, sys.path[1] + "/Scripts")
+	cmd.run('pip ' + command + ' ' + module, cmd.PythonHomeScriptsPath())
 
 def install(module):
 	t = Thread(target=pipModuleAction, args=('install',module,))
