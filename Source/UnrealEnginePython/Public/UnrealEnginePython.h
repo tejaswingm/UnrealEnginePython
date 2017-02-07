@@ -44,6 +44,8 @@ public:
 	//Add specified folder to the python systems path (e.g. from external plugins or projects allowing modular python plugin script content)
 	void AddPathToSysPath(const FString& Path);
 
+	void AddPythonDependentPlugin(const FString& PluginName);
+
 private:
 	void *ue_python_gil;
 	// used by console

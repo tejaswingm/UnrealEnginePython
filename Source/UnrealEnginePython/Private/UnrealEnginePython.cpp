@@ -110,6 +110,9 @@ void FUnrealEnginePythonModule::StartupModule()
 	main_dict = PyModule_GetDict(main_module);
 	local_dict = main_dict;// PyDict_New();
 
+	//import upymodule_importer
+	PyImport_ImportModule("upymodule_importer");
+
 	if (PyImport_ImportModule("ue_site")) {
 		UE_LOG(LogPython, Log, TEXT("ue_site Python module successfully imported"));
 	}
@@ -117,6 +120,8 @@ void FUnrealEnginePythonModule::StartupModule()
 		// TODO gracefully manage the error
 		unreal_engine_py_log_error();
 	}
+
+	
 
 #if WITH_EDITOR
 	// register commands (after importing ue_site)
@@ -191,6 +196,31 @@ void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)
 	char *charPath = TCHAR_TO_UTF8(*Path);
 	PyObject *py_scripts_path = PyUnicode_FromString(charPath);
 	PyList_Insert(py_path, 0, py_scripts_path);
+
+	PythonGILRelease();
+}
+
+void FUnrealEnginePythonModule::AddPythonDependentPlugin(const FString& PluginName)
+{
+	//Add plugin Content/Script to sys.path
+	FString PluginRoot = IPluginManager::Get().FindPlugin(PluginName)->GetBaseDir();
+	FString ScriptsPath = FPaths::Combine(PluginRoot, "Content/Scripts");
+	FUnrealEnginePythonModule::Get().AddPathToSysPath(ScriptsPath);
+	UE_LOG(LogPython, Log, TEXT("Added %s Plugin Content/Scripts (%s) to sys.path"), *PluginName, *ScriptsPath);
+
+	//run import interpreter on upythonmodule.json inside scripts
+	FString PyModulePath = FString::Printf(TEXT("%s/upymodule.json"), *ScriptsPath);
+	FString RunImport = FString::Printf(TEXT("upymodule_importer.parseJson('%s')"), *PyModulePath);
+
+ 	PythonGILAcquire();
+
+	if (PyRun_SimpleString(TCHAR_TO_UTF8(*RunImport))) {
+		UE_LOG(LogPython, Log, TEXT("%s upymodule successfully imported"), *PluginName);
+	}
+	else {
+		// TODO gracefully manage the error
+		unreal_engine_py_log_error();
+	}
 
 	PythonGILRelease();
 }
