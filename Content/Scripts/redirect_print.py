@@ -9,9 +9,10 @@ class Redirector(object):
         ue.log(message)
 
     def flush(self):
-    	sys.stdout.flush
+    	sys.stdout.flush()
+
     def splitlines(self):
-    	sys.stdout.splitlines
+    	sys.stdout.splitlines()
 
 sys.stdout = Redirector()
 sys.stderr = Redirector()
