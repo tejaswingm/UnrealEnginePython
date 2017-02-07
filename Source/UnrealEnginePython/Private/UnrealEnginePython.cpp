@@ -182,6 +182,8 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 
 void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)
 {
+	PythonGILAcquire();
+
 	PyObject *py_sys = PyImport_ImportModule("sys");
 	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
 	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
@@ -189,6 +191,8 @@ void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)
 	char *charPath = TCHAR_TO_UTF8(*Path);
 	PyObject *py_scripts_path = PyUnicode_FromString(charPath);
 	PyList_Insert(py_path, 0, py_scripts_path);
+
+	PythonGILRelease();
 }
 
 #undef LOCTEXT_NAMESPACE
