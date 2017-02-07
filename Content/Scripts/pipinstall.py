@@ -10,5 +10,5 @@ def install(module):
 	t.start()
 
 def uninstall(module):
-	t = Thread(target=pipModuleAction, args=('uninstall',module,))
+	t = Thread(target=pipModuleAction, args=('uninstall -y',module,))
 	t.start()
