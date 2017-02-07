@@ -31,13 +31,15 @@ def FolderCommand(folder):
 	return changefolder
 
 #main public function
-def run(process, path=_PythonHomePath):
+def run(process, path=_PythonHomePath, verbose=True):
 	#todo: change folder
 	fullcommand = FolderCommand(path) + process
-	ue.log("Started cmd <" + fullcommand + ">")
+	if verbose:
+		ue.log("Started cmd <" + fullcommand + ">")
 	stdoutdata = subprocess.getstatusoutput(fullcommand)
-	ue.log("cmd Result: ")
-	ue.log(stdoutdata[1])
+	if verbose:
+		ue.log("cmd Result: ")
+		ue.log(stdoutdata[1])
 	return stdoutdata[1] #return the data for dependent functions
 
 #convenience wrappers

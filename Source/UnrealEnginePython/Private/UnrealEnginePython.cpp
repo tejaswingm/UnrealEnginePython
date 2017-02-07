@@ -210,15 +210,14 @@ void FUnrealEnginePythonModule::AddPythonDependentPlugin(const FString& PluginNa
 
 	//run import interpreter on upythonmodule.json inside scripts
 	FString PyModulePath = FString::Printf(TEXT("%s/upymodule.json"), *ScriptsPath);
-	FString RunImport = FString::Printf(TEXT("upymodule_importer.parseJson('%s')"), *PyModulePath);
+	FString RunImport = FString::Printf(TEXT("import upymodule_importer\nupymodule_importer.parseJson('%s')"), *PyModulePath);
 
  	PythonGILAcquire();
 
-	if (PyRun_SimpleString(TCHAR_TO_UTF8(*RunImport))) {
-		UE_LOG(LogPython, Log, TEXT("%s upymodule successfully imported"), *PluginName);
+	if (PyRun_SimpleString(TCHAR_TO_UTF8(*RunImport)) == 0) {
+		UE_LOG(LogPython, Log, TEXT("%s Plugin upymodule.json parsed"), *PluginName);
 	}
 	else {
-		// TODO gracefully manage the error
 		unreal_engine_py_log_error();
 	}
 

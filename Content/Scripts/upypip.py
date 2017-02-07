@@ -11,13 +11,13 @@ class PipInstall:
 		return None
 
 	#blocking actions, should be run on off-thread
-	def pipModuleAction(self, command, args):
-		return cmd.run('pip ' + command + ' ' + args, cmd.PythonHomeScriptsPath())
+	def pipModuleAction(self, command, args, verbose=True):
+		return cmd.run('pip ' + command + ' ' + args, cmd.PythonHomeScriptsPath(), verbose)
 
 	#use this if you need to work on the resulting list to query current dependencies
-	def listDict(self):
+	def listDict(self, verbose=True):
 		#get the list of all the modules from pip
-		resultString = self.pipModuleAction('list','--format=columns')
+		resultString = self.pipModuleAction('list','--format=columns', verbose)
 
 		#convert to lines for parsing
 		lines = resultString.split("\n")
@@ -34,7 +34,7 @@ class PipInstall:
 
 	def isInstalled(self, module):
 		if PipInstall.modules == None:
-			PipInstall.modules = self.listDict()
+			PipInstall.modules = self.listDict(False)
 		if module in PipInstall.modules:
 			return True
 		else:
