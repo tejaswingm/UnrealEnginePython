@@ -5,7 +5,7 @@ import sys
 import unreal_engine as ue
 import _thread as thread
 
-ue.log(sys.path)
+#ue.log(sys.path)
 
 #define some convenience paths
 def PythonHomePath():
@@ -30,18 +30,25 @@ def FolderCommand(folder):
 	changefolder = "cd /d \"" + folder + "\" & "
 	return changefolder
 
-
 #main public function
-def run(process, folder=_PythonHomePath):
+def run(process, path=_PythonHomePath):
 	#todo: change folder
-	fullcommand = FolderCommand(folder) + process
+	fullcommand = FolderCommand(path) + process
 	ue.log("Started cmd <" + fullcommand + ">")
 	stdoutdata = subprocess.getstatusoutput(fullcommand)
 	ue.log("cmd Result: ")
 	ue.log(stdoutdata[1])
 	return stdoutdata[1] #return the data for dependent functions
 
+#convenience wrappers
+def dir(path=_PythonHomePath):
+	run('dir', path)
 
-def Test():
-	#debug test - 
-	run('dir')	
+def ls(path=_PythonHomePath):
+	dir(path)
+
+def md(folder, path=_PythonHomePath):
+	run('md ' + folder, path)
+
+def mkdir(folder, path=_PythonHomePath):
+	md(folder, path)
