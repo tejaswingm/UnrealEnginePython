@@ -35,11 +35,11 @@ def FolderCommand(folder):
 def run(process, folder=_PythonHomePath):
 	#todo: change folder
 	fullcommand = FolderCommand(folder) + process
-	ue.log("Command <" + fullcommand + ">")
+	ue.log("Started cmd <" + fullcommand + ">")
 	stdoutdata = subprocess.getstatusoutput(fullcommand)
-	ue.log("Command Result: ")
+	ue.log("cmd Result: ")
 	ue.log(stdoutdata[1])
-
+	return stdoutdata[1] #return the data for dependent functions
 
 
 def Test():
