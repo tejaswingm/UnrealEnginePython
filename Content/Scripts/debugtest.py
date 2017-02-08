@@ -1,22 +1,55 @@
-import redirect_print
+#import debugtest
+#import imp
+#imp.reload(debugtest)
+
+#Testing script for various writing setups
+
+#import redirect_print
+import unreal_engine as ue
 import time
-import imp
+import sys
+import upythread as ut
 from threading import Thread
 
-imp.reload(redirect_print)
+#imp.reload(redirect_print)
 
-def backspace(n):
-    # print((b'\x08' * n).decode(), end='') # use \x08 char to go back
-    print('\r' * n, end='')                 # use '\r' to go back
+def onfinished(args=""):
+	ue.log(args)
+	ue.log('finished with: <' + str(args) + '>')
 
-def testaction():
-	for i in range(51):                        # for 0 to 100
-	    s = str(i) + '%'                        # string for output
-	    print(s, end='')                        # just print and flush
-	    # sys.stdout.flush()                    # needed for flush when using \x08
-	    backspace(len(s))                       # back for n chars
+def onfinishedempty():
+	ue.log('finished')
 
-	    time.sleep(0.01)                         # sleep for 200ms
+def testaction(args=""):
+	ue.log('starting action with <' + str(args) + '>')
+	#onfinished()
 
-t = Thread(target=testaction)
-t.start()
+	#pretend you take time to finish
+	time.sleep(1)
+	ue.log('wait complete')
+	ue.run_on_gt(onfinished, args)
+	ue.run_on_gt(onfinishedempty)
+
+#the test function
+def test(params=None):
+	ue.log(type(params))
+	ue.log('starting test')
+	if not params:
+		t = Thread(target=testaction)
+	else:
+		t = Thread(target=testaction, args=(params,))
+	t.start()
+
+def yolo():
+	ue.log('yolo!')
+
+def yolodone():
+	ue.log('yolo done!')
+
+#test simple fire and forget
+def test2():
+	ut.run_on_bt(yolo)
+
+#Test with callback
+def test3():
+	ut.run_on_bt(yolo, yolodone)
