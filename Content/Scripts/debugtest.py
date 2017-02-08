@@ -53,3 +53,19 @@ def test2():
 #Test with callback
 def test3():
 	ut.run_on_bt(yolo, yolodone)
+
+
+#progress callback example functions
+def progresscallback(progress):
+	ue.log('at ' + str(progress))
+
+def doLongTask():
+	ue.log('started my task')
+
+	for x in range(1,10):
+		time.sleep(0.5)
+		ue.run_on_gt(progresscallback, x)
+
+#test basic progress bar
+def testp():
+	ut.run_on_bt(doLongTask)
