@@ -425,12 +425,20 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 	PyObject *py_callable = nullptr;
 	PyObject *py_params = nullptr;
 
-	//function with no params
-	if (!PyArg_ParseTuple(args, "O:create_and_dispatch_when_ready", &py_callable))
-	{
-		//UE_LOG(LogPython, Log, TEXT("PyArg_ParseTuple without params failed"));
-		//unreal_engine_py_log_error();
+	Py_ssize_t TupleSize = PyTuple_Size(args);
 
+	if (TupleSize == 1)
+	{
+		//function with no params
+		if (!PyArg_ParseTuple(args, "O:create_and_dispatch_when_ready", &py_callable))
+		{
+			UE_LOG(LogPython, Log, TEXT("PyArg_ParseTuple without params failed"));
+			unreal_engine_py_log_error();
+			return NULL;
+		}
+	}
+	else
+	{
 		//function with params
 		if (!PyArg_ParseTuple(args, "OO:create_and_dispatch_when_ready", &py_callable, &py_params))
 		{
