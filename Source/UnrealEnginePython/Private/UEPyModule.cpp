@@ -25,6 +25,7 @@
 #include "UEPyAssetUserData.h"
 #include "UEPyTexture.h"
 #include "UEPyMaterial.h"
+#include "UEPyLambda.h"
 #if WITH_EDITOR
 #include "UEPyEditor.h"
 #endif
@@ -191,6 +192,9 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "exec", py_unreal_engine_exec, METH_VARARGS, "" },
 
 	{ "get_engine_defined_action_mappings", py_unreal_engine_get_engine_defined_action_mappings, METH_VARARGS, "" },
+
+	//duplicate for now for testing
+	{ "run_on_gt", py_unreal_engine_create_and_dispatch_when_ready, METH_VARARGS, "" },
 
 	{ NULL, NULL },
 };
