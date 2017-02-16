@@ -27,7 +27,7 @@ def parseJson(packagePath):
 				version = pythonModules[module]
 
 				ue.log(module + " " + version + " installed? " + str(pip.isInstalled(module)))
-				if not pip.isInstalled(module):
+				if not pip.isInstalled(module, version):
 					ue.log('Dependency not installed, fetching via pip...')
 					pip.install(module + '==' + version)
 

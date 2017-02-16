@@ -1,6 +1,7 @@
 import upycmd as cmd
 import sys
 from threading import Thread
+from distutils.version import LooseVersion
 
 
 class PipInstall:
@@ -32,11 +33,20 @@ class PipInstall:
 		PipInstall.modules = resultDict
 		return resultDict
 
-	def isInstalled(self, module):
+	def isDesiredVersionSufficient(self, desired, current):
+		return LooseVersion(desired) <= LooseVersion(current)
+
+	def isInstalled(self, module, desiredVersion=None):
 		if PipInstall.modules == None:
 			PipInstall.modules = self.listDict(False)
 		if module in PipInstall.modules:
-			return True
+			#did we specify a version? ensure we've installed that version at least
+			if desiredVersion:
+				#print('current version: ' + str(PipInstall.modules[module]))
+				#print('desired version: ' + str(desiredVersion))
+				return self.isDesiredVersionSufficient(desiredVersion, PipInstall.modules[module])
+			else:
+				return True
 		else:
 			return False
 
