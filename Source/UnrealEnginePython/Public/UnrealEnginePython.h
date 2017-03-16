@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ModuleManager.h"
+#define UEPY_THREADING 1
 
 DECLARE_LOG_CATEGORY_EXTERN(LogPython, Log, All);
 

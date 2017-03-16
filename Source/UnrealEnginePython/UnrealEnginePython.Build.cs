@@ -66,6 +66,7 @@ public class UnrealEnginePython : ModuleRules
                 "SlateCore",
                 "MovieScene",
                 "LevelSequence",
+ 
 				// ... add private dependencies that you statically link with here ...
 			}
             );
@@ -83,7 +84,8 @@ public class UnrealEnginePython : ModuleRules
         {
             PrivateDependencyModuleNames.AddRange(new string[]{
                 "UnrealEd",
-                "LevelEditor"
+                "LevelEditor",
+                "WorkspaceMenuStructure"
             });
         }
 
