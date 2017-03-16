@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ModuleManager.h"
+#define UEPY_THREADING 1
 
 DECLARE_LOG_CATEGORY_EXTERN(LogPython, Log, All);
 
@@ -18,7 +19,9 @@ public:
 	virtual void ShutdownModule() override;
 
 	void RunString(char *);
+	void RunStringSandboxed(char *);
 	void RunFile(char *);
+	void RunFileSandboxed(char *);
 
 	/**
 	* Singleton-like access to this module's interface.  This is just for convenience!
@@ -51,12 +54,13 @@ private:
 	// used by console
 	void *main_dict;
 	void *local_dict;
+	void *main_module;
 };
 
 struct FScopePythonGIL {
 	FScopePythonGIL()
 	{
-#if UEPY_THREADING
+#if defined(UEPY_THREADING)
 		UnrealEnginePythonModule = FModuleManager::LoadModuleChecked<FUnrealEnginePythonModule>("UnrealEnginePython");
 		safeForRelease = UnrealEnginePythonModule.PythonGILAcquire();
 #endif
@@ -64,7 +68,7 @@ struct FScopePythonGIL {
 
 	~FScopePythonGIL()
 	{
-#if UEPY_THREADING
+#if defined(UEPY_THREADING)
 		if (safeForRelease) {
 			UnrealEnginePythonModule.PythonGILRelease();
 		}

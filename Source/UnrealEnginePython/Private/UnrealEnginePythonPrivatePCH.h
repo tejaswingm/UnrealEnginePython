@@ -15,13 +15,10 @@
 
 #include "Runtime/Launch/Resources/Version.h"
 
-#if UNREAL_ENGINE_PYTHON_ON_MAC == 3
-#include <python3.5m/Python.h>
-#include <python3.5m/structmember.h>
-#elif UNREAL_ENGINE_PYTHON_ON_MAC == 2
-#include <python2.7/Python.h>
-#include <python2.7/structmember.h>
-#elif UNREAL_ENGINE_PYTHON_ON_LINUX
+#if defined(UNREAL_ENGINE_PYTHON_ON_MAC)
+#include <Headers/Python.h>
+#include <Headers/structmember.h>
+#elif defined(UNREAL_ENGINE_PYTHON_ON_LINUX)
 #include <Python.h>
 #include <structmember.h>
 #else
@@ -37,15 +34,20 @@
 #include "UEPyFColor.h"
 #include "UEPyFLinearColor.h"
 #include "UEPyFSocket.h"
+#include "UEPyUScriptStruct.h"
+#include "UEPyFRandomStream.h"
 
 #include "UEPyCallable.h"
 #include "UEPyUClassesImporter.h"
 #include "UEPyEnumsImporter.h"
+#include "UEPyUStructsImporter.h"
 
 #if WITH_EDITOR
 #include "UEPyFAssetData.h"
 #include "UEPyFARFilter.h"
 #include "UEPyAnimSequence.h"
+#include "UEPyEdGraphPin.h"
+#include "UEPyIPlugin.h"
 #endif
 
 #define ue_py_check(py_u) if (!py_u->ue_object || !py_u->ue_object->IsValidLowLevel() || py_u->ue_object->IsPendingKillOrUnreachable())\

@@ -4,7 +4,7 @@
 
 void unreal_engine_init_py_module();
 
-#if UNREAL_ENGINE_PYTHON_ON_LINUX
+#if defined(UNREAL_ENGINE_PYTHON_ON_LINUX)
 const char *ue4_module_options = "linux_global_symbols";
 #endif
 
@@ -43,7 +43,7 @@ bool PyUnicodeOrString_Check(PyObject *py_obj) {
 
 
 void FUnrealEnginePythonModule::PythonGILRelease() {
-#if UEPY_THREADING
+#if defined(UEPY_THREADING)
 	if (PyGILState_Check() == 1) {
 		ue_python_gil = PyEval_SaveThread();
 	}
@@ -51,7 +51,7 @@ void FUnrealEnginePythonModule::PythonGILRelease() {
 }
 
 bool FUnrealEnginePythonModule::PythonGILAcquire() {
-#if UEPY_THREADING
+#if defined(UEPY_THREADING)
 	if (PyGILState_Check() == 0) {
 		PyEval_RestoreThread((PyThreadState *)ue_python_gil);
 		return true;
@@ -61,9 +61,41 @@ bool FUnrealEnginePythonModule::PythonGILAcquire() {
 	return true;
 }
 
+static void UESetupPythonInterpeter(bool verbose) {
+	unreal_engine_init_py_module();
+
+	PyObject *py_sys = PyImport_ImportModule("sys");
+	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
+
+	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
+
+	char *zip_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("ue_python.zip")));
+	PyObject *py_zip_path = PyUnicode_FromString(zip_path);
+	PyList_Insert(py_path, 0, py_zip_path);
+
+	char *scripts_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts")));
+	PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
+	PyList_Insert(py_path, 0, py_scripts_path);
+
+	if (verbose) {
+		UE_LOG(LogPython, Log, TEXT("Python VM initialized: %s"), UTF8_TO_TCHAR(Py_GetVersion()));
+		UE_LOG(LogPython, Log, TEXT("Python Scripts search path: %s"), UTF8_TO_TCHAR(scripts_path));
+	}
+}
+
 void FUnrealEnginePythonModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	FString PyHome;
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("Home"), PyHome, GEngineIni)) {
+#if PY_MAJOR_VERSION >= 3
+		wchar_t *home = (wchar_t *)*PyHome;
+#else
+		char *home = TCHAR_TO_UTF8(*PyHome);
+#endif
+
+		Py_SetPythonHome(home);
+	}
 
 	Py_Initialize();
 #if PY_MAJOR_VERSION >= 3
@@ -74,21 +106,6 @@ void FUnrealEnginePythonModule::StartupModule()
 	PySys_SetArgv(1, argv);
 
 	PyEval_InitThreads();
-
-	unreal_engine_init_py_module();
-
-	PyObject *py_sys = PyImport_ImportModule("sys");
-	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
-
-	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
-
-	char *zip_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("python35.zip")));
-	PyObject *py_zip_path = PyUnicode_FromString(zip_path);
-	PyList_Insert(py_path, 0, py_zip_path);
-
-	char *scripts_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts")));
-	PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
-	PyList_Insert(py_path, 0, py_scripts_path);
 
 	/* UnrealEnginePython Plugin Content/Scripts path */
 	FString PluginRoot = IPluginManager::Get().FindPlugin("UnrealEnginePython")->GetBaseDir();
@@ -103,13 +120,25 @@ void FUnrealEnginePythonModule::StartupModule()
 	PyList_Insert(py_path, 0, PyUnicode_FromString(python_path));
 	PyList_Insert(py_path, 0, PyUnicode_FromString(site_path));
 
-	UE_LOG(LogPython, Log, TEXT("Python VM initialized: %s"), UTF8_TO_TCHAR(Py_GetVersion()));
-	UE_LOG(LogPython, Log, TEXT("Python Scripts search path: %s"), UTF8_TO_TCHAR(scripts_path));
+	UESetupPythonInterpeter(true);
 
-	PyObject *main_module = PyImport_AddModule("__main__");
-	main_dict = PyModule_GetDict(main_module);
+	main_module = PyImport_AddModule("__main__");
+	main_dict = PyModule_GetDict((PyObject*)main_module);
 	local_dict = main_dict;// PyDict_New();
 
+	// Redirecting stdout
+	char const* code = "import sys\n"
+		"import unreal_engine as ue\n"
+		"class UnrealEngineOutput:\n"
+		"    def __init__(self, logger):\n"
+		"        self.logger = logger\n"
+		"    def write(self, buf):\n"
+		"        self.logger(buf)\n"
+		"    def flush(self):\n"
+		"        return\n"
+		"sys.stdout = UnrealEngineOutput(ue.log)\n"
+		"sys.stderr = UnrealEngineOutput(ue.log_error)\n";
+	PyRun_SimpleString(code);
 	//import upymodule_importer
 	PyImport_ImportModule("upymodule_importer");
 
@@ -155,6 +184,43 @@ void FUnrealEnginePythonModule::RunString(char *str) {
 	Py_DECREF(eval_ret);
 }
 
+// run a python string in a new sub interpreter 
+void FUnrealEnginePythonModule::RunStringSandboxed(char *str) {
+	FScopePythonGIL gil;
+
+	PyThreadState *_main = PyThreadState_Get();
+
+	PyThreadState *py_new_state = Py_NewInterpreter();
+	if (!py_new_state) {
+		UE_LOG(LogPython, Error, TEXT("Unable to create new Python interpreter"));
+		return;
+	}
+	PyThreadState_Swap(nullptr);
+	PyThreadState_Swap(py_new_state);
+
+	UESetupPythonInterpeter(false);
+
+	PyObject *m = PyImport_AddModule("__main__");
+	if (m == NULL) {
+		UE_LOG(LogPython, Error, TEXT("Unable to create new global dict"));
+		Py_EndInterpreter(py_new_state);
+		PyThreadState_Swap(_main);
+		return;
+	}
+	PyObject *global_dict = PyModule_GetDict(m);
+
+	PyObject *eval_ret = PyRun_String(str, Py_file_input, global_dict, global_dict);
+	if (!eval_ret) {
+		unreal_engine_py_log_error();
+		Py_EndInterpreter(py_new_state);
+		PyThreadState_Swap(_main);
+		return;
+	}
+
+	Py_EndInterpreter(py_new_state);
+	PyThreadState_Swap(_main);
+}
+
 void FUnrealEnginePythonModule::RunFile(char *filename) {
 	FScopePythonGIL gil;
 	char *full_path = filename;
@@ -162,8 +228,9 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 	{
 		full_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"), *FString("/"), UTF8_TO_TCHAR(filename)));
 	}
+#if PY_MAJOR_VERSION >= 3
 	FILE *fd = nullptr;
-	
+
 #if PLATFORM_WINDOWS
 	if (fopen_s(&fd, full_path, "r") != 0) {
 		UE_LOG(LogPython, Error, TEXT("Unable to open file %s"), UTF8_TO_TCHAR(full_path));
@@ -176,6 +243,7 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 		return;
 	}
 #endif
+
 	PyObject *eval_ret = PyRun_File(fd, full_path, Py_file_input, (PyObject *)main_dict, (PyObject *)local_dict);
 	fclose(fd);
 	if (!eval_ret) {
@@ -183,6 +251,85 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 		return;
 	}
 	Py_DECREF(eval_ret);
+#else
+	// damn, this is horrible, but it is the only way i found to avoid the CRT error :(
+	FString command = FString::Printf(TEXT("execfile(\"%s\")"), UTF8_TO_TCHAR(full_path));
+	PyObject *eval_ret = PyRun_String(TCHAR_TO_UTF8(*command), Py_file_input, (PyObject *)main_dict, (PyObject *)local_dict);
+	if (!eval_ret) {
+		unreal_engine_py_log_error();
+		return;
+	}
+#endif
+
+}
+
+// run a python script in a new sub interpreter (useful for unit tests)
+void FUnrealEnginePythonModule::RunFileSandboxed(char *filename) {
+	FScopePythonGIL gil;
+	char *full_path = filename;
+	if (!FPaths::FileExists(filename))
+	{
+		full_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"), *FString("/"), UTF8_TO_TCHAR(filename)));
+	}
+
+	PyThreadState *_main = PyThreadState_Get();
+
+	PyThreadState *py_new_state = Py_NewInterpreter();
+	if (!py_new_state) {
+		UE_LOG(LogPython, Error, TEXT("Unable to create new Python interpreter"));
+		return;
+	}
+	PyThreadState_Swap(nullptr);
+	PyThreadState_Swap(py_new_state);
+
+	UESetupPythonInterpeter(false);
+
+	PyObject *m = PyImport_AddModule("__main__");
+	if (m == NULL) {
+		UE_LOG(LogPython, Error, TEXT("Unable to create new global dict"));
+		Py_EndInterpreter(py_new_state);
+		PyThreadState_Swap(_main);
+		return;
+	}
+	PyObject *global_dict = PyModule_GetDict(m);
+
+#if PY_MAJOR_VERSION >= 3
+	FILE *fd = nullptr;
+
+#if PLATFORM_WINDOWS
+	if (fopen_s(&fd, full_path, "r") != 0) {
+		UE_LOG(LogPython, Error, TEXT("Unable to open file %s"), UTF8_TO_TCHAR(full_path));
+		return;
+	}
+#else
+	fd = fopen(full_path, "r");
+	if (!fd) {
+		UE_LOG(LogPython, Error, TEXT("Unable to open file %s"), UTF8_TO_TCHAR(full_path));
+		return;
+	}
+#endif
+	PyObject *eval_ret = PyRun_File(fd, full_path, Py_file_input, global_dict, global_dict);
+	fclose(fd);
+	if (!eval_ret) {
+		unreal_engine_py_log_error();
+		Py_EndInterpreter(py_new_state);
+		PyThreadState_Swap(_main);
+		return;
+	}
+	Py_DECREF(eval_ret);
+#else
+	// damn, this is horrible, but it is the only way i found to avoid the CRT error :(
+	FString command = FString::Printf(TEXT("execfile(\"%s\")"), UTF8_TO_TCHAR(full_path));
+	PyObject *eval_ret = PyRun_String(TCHAR_TO_UTF8(*command), Py_file_input, global_dict, global_dict);
+	if (!eval_ret) {
+		unreal_engine_py_log_error();
+		Py_EndInterpreter(py_new_state);
+		PyThreadState_Swap(_main);
+		return;
+	}
+#endif
+	Py_EndInterpreter(py_new_state);
+	PyThreadState_Swap(_main);
 }
 
 void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)

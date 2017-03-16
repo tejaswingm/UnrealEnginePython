@@ -230,7 +230,7 @@ PyObject *py_unreal_engine_find_struct(PyObject * self, PyObject * args) {
 		return NULL;
 	}
 
-	UStruct *u_struct = FindObject<UStruct>(ANY_PACKAGE, UTF8_TO_TCHAR(name));
+	UScriptStruct *u_struct = FindObject<UScriptStruct>(ANY_PACKAGE, UTF8_TO_TCHAR(name));
 
 	if (!u_struct)
 		return PyErr_Format(PyExc_Exception, "unable to find struct %s", name);
@@ -254,7 +254,7 @@ PyObject *py_unreal_engine_load_struct(PyObject * self, PyObject * args) {
 	if (filename)
 		t_filename = UTF8_TO_TCHAR(filename);
 
-	UObject *u_struct = StaticLoadObject(UStruct::StaticClass(), NULL, UTF8_TO_TCHAR(name), t_filename);
+	UObject *u_struct = StaticLoadObject(UScriptStruct::StaticClass(), NULL, UTF8_TO_TCHAR(name), t_filename);
 
 	if (!u_struct)
 		return PyErr_Format(PyExc_Exception, "unable to find struct %s", name);
@@ -321,7 +321,6 @@ PyObject *py_unreal_engine_find_object(PyObject * self, PyObject * args) {
 		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
 	Py_INCREF(ret);
 	return (PyObject *)ret;
-
 }
 
 
@@ -376,6 +375,35 @@ PyObject *py_unreal_engine_new_object(PyObject * self, PyObject * args) {
 	return (PyObject *)ret;
 }
 
+PyObject *py_unreal_engine_get_mutable_default(PyObject * self, PyObject * args) {
+
+	PyObject *obj;
+	if (!PyArg_ParseTuple(args, "O|Os:new_object", &obj)) {
+		return NULL;
+	}
+
+	if (!ue_is_pyuobject(obj)) {
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+	}
+
+	ue_PyUObject *py_obj = (ue_PyUObject *)obj;
+
+	if (!py_obj->ue_object->IsA<UClass>())
+		return PyErr_Format(PyExc_Exception, "uobject is not a UClass");
+
+	UClass *obj_class = (UClass *)py_obj->ue_object;
+
+	UObject *mutable_object = GetMutableDefault<UObject>(obj_class);
+	if (!mutable_object)
+		return PyErr_Format(PyExc_Exception, "unable to create object");
+
+	ue_PyUObject *ret = ue_get_python_wrapper(mutable_object);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
+}
+
 
 PyObject *py_unreal_engine_new_class(PyObject * self, PyObject * args) {
 
@@ -408,7 +436,7 @@ PyObject *py_unreal_engine_new_class(PyObject * self, PyObject * args) {
 	return (PyObject *)ret;
 }
 
-PyObject *py_unreal_engine_classes(PyObject * self, PyObject * args) {
+PyObject *py_unreal_engine_all_classes(PyObject * self, PyObject * args) {
 
 	PyObject *ret = PyList_New(0);
 
@@ -508,5 +536,195 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 	Py_INCREF(Py_None);
 	return Py_None;
 }
+
+PyObject *py_unreal_engine_get_viewport_screenshot(PyObject *self, PyObject * args) {
+
+	if (!GEngine->GameViewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *py_bool = nullptr;
+	bool as_int_list = false;
+	if (!PyArg_ParseTuple(args, "|O:get_viewport_screenshot", &py_bool)) {
+		return NULL;
+	}
+
+	if (py_bool && PyObject_IsTrue(py_bool))
+		as_int_list = true;
+
+	FViewport *viewport = GEngine->GameViewport->Viewport;
+	TArray<FColor> bitmap;
+
+	bool success = GetViewportScreenShot(viewport, bitmap);
+
+	if (!success) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	if (as_int_list) {
+		PyObject *bitmap_tuple = PyTuple_New(bitmap.Num() * 4);
+		for (int i = 0; i < bitmap.Num(); i++) {
+			PyTuple_SetItem(bitmap_tuple, i * 4, PyLong_FromLong(bitmap[i].R));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 1, PyLong_FromLong(bitmap[i].G));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 2, PyLong_FromLong(bitmap[i].B));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 3, PyLong_FromLong(bitmap[i].A));
+		}
+		return bitmap_tuple;
+	}
+
+	PyObject *bitmap_tuple = PyTuple_New(bitmap.Num());
+	for (int i = 0; i < bitmap.Num(); i++) {
+		PyTuple_SetItem(bitmap_tuple, i, py_ue_new_fcolor(bitmap[i]));
+	}
+
+	return bitmap_tuple;
+}
+
+PyObject *py_unreal_engine_get_viewport_size(PyObject *self, PyObject * args) {
+
+	if (!GEngine->GameViewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	FViewport *viewport = GEngine->GameViewport->Viewport;
+	PyObject *tuple_size = PyTuple_New(2);
+	FIntPoint point = viewport->GetSizeXY();
+
+	PyTuple_SetItem(tuple_size, 0, PyLong_FromLong(point.X));
+	PyTuple_SetItem(tuple_size, 1, PyLong_FromLong(point.Y));
+
+	return tuple_size;
+}
+
+#if WITH_EDITOR
+PyObject *py_unreal_engine_editor_get_active_viewport_screenshot(PyObject *self, PyObject * args) {
+
+	FViewport *viewport = GEditor->GetActiveViewport();
+	if (!viewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *py_bool = nullptr;
+	bool as_int_list = false;
+	if (!PyArg_ParseTuple(args, "|O:editor_get_active_viewport_screenshot", &py_bool)) {
+		return NULL;
+	}
+
+	if (py_bool && PyObject_IsTrue(py_bool))
+		as_int_list = true;
+
+	TArray<FColor> bitmap;
+
+	bool success = GetViewportScreenShot(viewport, bitmap);
+
+	if (!success) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	if (as_int_list) {
+		PyObject *bitmap_tuple = PyTuple_New(bitmap.Num() * 4);
+		for (int i = 0; i < bitmap.Num(); i++) {
+			PyTuple_SetItem(bitmap_tuple, i * 4, PyLong_FromLong(bitmap[i].R));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 1, PyLong_FromLong(bitmap[i].G));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 2, PyLong_FromLong(bitmap[i].B));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 3, PyLong_FromLong(bitmap[i].A));
+		}
+		return bitmap_tuple;
+	}
+
+	PyObject *bitmap_tuple = PyTuple_New(bitmap.Num());
+	for (int i = 0; i < bitmap.Num(); i++) {
+		PyTuple_SetItem(bitmap_tuple, i, py_ue_new_fcolor(bitmap[i]));
+	}
+
+	return bitmap_tuple;
+}
+
+PyObject *py_unreal_engine_editor_get_active_viewport_size(PyObject *self, PyObject * args) {
+
+
+	FViewport *viewport = GEditor->GetActiveViewport();
+	if (!viewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *tuple_size = PyTuple_New(2);
+
+	FIntPoint point = viewport->GetSizeXY();
+
+	PyTuple_SetItem(tuple_size, 0, PyLong_FromLong(point.X));
+	PyTuple_SetItem(tuple_size, 1, PyLong_FromLong(point.Y));
+
+	return tuple_size;
+}
+
+PyObject *py_unreal_engine_editor_get_pie_viewport_screenshot(PyObject *self, PyObject * args) {
+
+	FViewport *viewport = GEditor->GetPIEViewport();
+	if (!viewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *py_bool = nullptr;
+	bool as_int_list = false;
+	if (!PyArg_ParseTuple(args, "|O:editor_get_pie_viewport_screenshot", &py_bool)) {
+		return NULL;
+	}
+
+	if (py_bool && PyObject_IsTrue(py_bool))
+		as_int_list = true;
+
+	TArray<FColor> bitmap;
+
+	bool success = GetViewportScreenShot(viewport, bitmap);
+
+	if (!success) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	if (as_int_list) {
+		PyObject *bitmap_tuple = PyTuple_New(bitmap.Num() * 4);
+		for (int i = 0; i < bitmap.Num(); i++) {
+			PyTuple_SetItem(bitmap_tuple, i * 4, PyLong_FromLong(bitmap[i].R));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 1, PyLong_FromLong(bitmap[i].G));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 2, PyLong_FromLong(bitmap[i].B));
+			PyTuple_SetItem(bitmap_tuple, i * 4 + 3, PyLong_FromLong(bitmap[i].A));
+		}
+		return bitmap_tuple;
+	}
+
+	PyObject *bitmap_tuple = PyTuple_New(bitmap.Num());
+	for (int i = 0; i < bitmap.Num(); i++) {
+		PyTuple_SetItem(bitmap_tuple, i, py_ue_new_fcolor(bitmap[i]));
+	}
+
+	return bitmap_tuple;
+}
+
+PyObject *py_unreal_engine_editor_get_pie_viewport_size(PyObject *self, PyObject * args) {
+
+
+	FViewport *viewport = GEditor->GetPIEViewport();
+	if (!viewport) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	PyObject *tuple_size = PyTuple_New(2);
+	FIntPoint point = viewport->GetSizeXY();
+
+	PyTuple_SetItem(tuple_size, 0, PyLong_FromLong(point.X));
+	PyTuple_SetItem(tuple_size, 1, PyLong_FromLong(point.Y));
+	return tuple_size;
+}
+#endif
 
 
