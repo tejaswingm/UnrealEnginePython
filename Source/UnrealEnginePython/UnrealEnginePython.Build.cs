@@ -12,6 +12,14 @@ public class UnrealEnginePython : ModuleRules
     //private string pythonHome = "C:/Program Files/Python36";
     // this is an example for Homebrew on Mac 
     //private string pythonHome = "/usr/local/Cellar/python3/3.6.0/Frameworks/Python.framework/Versions/3.6/";
+    //Swap python versions here
+    private string PythonType = "Python35";
+    //private string PythonType = "Python27";
+
+    private string ThirdPartyPath
+    {
+        get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../../ThirdParty/")); }
+    }
 
 
     private string[] windowsKnownPaths =
@@ -28,6 +36,11 @@ public class UnrealEnginePython : ModuleRules
         "/Library/Frameworks/Python.framework/Versions/3.5",
         "/Library/Frameworks/Python.framework/Versions/2.7",
     };
+        get
+        {
+			return Path.GetFullPath(Path.Combine(ThirdPartyPath, PythonType));
+		}
+	}
 
     public UnrealEnginePython(TargetInfo Target)
     {
@@ -44,6 +57,7 @@ public class UnrealEnginePython : ModuleRules
         PrivateIncludePaths.AddRange(
             new string[] {
                 "UnrealEnginePython/Private",
+                PythonHome,
 				// ... add other private include paths required here ...
 			}
             );
@@ -54,7 +68,8 @@ public class UnrealEnginePython : ModuleRules
             {
                 "Core",
                 "Sockets",
-                "Networking"
+                "Networking",
+                "Projects"
 				// ... add other public dependencies that you statically link with here ...
 			}
             );
@@ -70,6 +85,7 @@ public class UnrealEnginePython : ModuleRules
                 "SlateCore",
                 "MovieScene",
                 "LevelSequence",
+ 
 				// ... add private dependencies that you statically link with here ...
 			}
             );
@@ -118,6 +134,24 @@ public class UnrealEnginePython : ModuleRules
                 {
                     throw new System.Exception("Unable to find Python installation");
                 }
+            System.Console.WriteLine("Using Python at: " + PythonHome);
+            PublicIncludePaths.Add(PythonHome);
+            PublicAdditionalLibraries.Add(Path.Combine(PythonHome, "Lib", string.Format("{0}.lib", PythonType)));
+        }
+        else if (Target.Platform == UnrealTargetPlatform.Mac)
+        {
+            if (PythonType == "Python35")
+            {
+                string mac_python = "/Library/Frameworks/Python.framework/Versions/3.5/";
+                PublicIncludePaths.Add(Path.Combine(mac_python, "include"));
+                PublicAdditionalLibraries.Add(Path.Combine(mac_python, "lib", "libpython3.5m.dylib"));
+                Definitions.Add(string.Format("UNREAL_ENGINE_PYTHON_ON_MAC=3"));
+            }
+            else if (PythonType == "Python27") {
+                string mac_python = "/Library/Frameworks/Python.framework/Versions/2.7/";
+                PublicIncludePaths.Add(Path.Combine(mac_python, "include"));
+                PublicAdditionalLibraries.Add(Path.Combine(mac_python, "lib", "libpython2.7.dylib"));
+                Definitions.Add(string.Format("UNREAL_ENGINE_PYTHON_ON_MAC=2"));
             }
             System.Console.WriteLine("Using Python at: " + pythonHome);
             PublicIncludePaths.Add(pythonHome);
@@ -128,13 +162,12 @@ public class UnrealEnginePython : ModuleRules
         }
         else if (Target.Platform == UnrealTargetPlatform.Linux)
         {
-            if (pythonHome == "python35")
+            if (PythonType == "Python35")
             {
                 PublicIncludePaths.Add("/usr/include/python3.5m");
                 PublicAdditionalLibraries.Add("/usr/lib/python3.5/config-3.5m-x86_64-linux-gnu/libpython3.5.so");
             }
-            else if (pythonHome == "python27")
-            {
+            else if (PythonType == "Python27") {
                 PublicIncludePaths.Add("/usr/include/python2.7");
                 PublicAdditionalLibraries.Add("/usr/lib/python2.7/config-x86_64-linux-gnu/libpython2.7.so");
             }

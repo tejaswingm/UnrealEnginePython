@@ -27,6 +27,7 @@
 #include "UEPyMaterial.h"
 #include "UEPyPawn.h"
 #include "UEPyController.h"
+#include "UEPyLambda.h"
 #if WITH_EDITOR
 #include "UEPyEditor.h"
 #include "UEPyEdGraph.h"
@@ -262,8 +263,8 @@ static PyMethodDef unreal_engine_methods[] = {
 
 	{ "editor_take_high_res_screen_shots", py_unreal_engine_editor_take_high_res_screen_shots, METH_VARARGS, "" },
 #endif
-
-
+	//duplicate for now for testing
+	{ "run_on_gt", py_unreal_engine_create_and_dispatch_when_ready, METH_VARARGS, "" },
 	{ NULL, NULL },
 };
 

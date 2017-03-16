@@ -107,6 +107,19 @@ void FUnrealEnginePythonModule::StartupModule()
 
 	PyEval_InitThreads();
 
+	/* UnrealEnginePython Plugin Content/Scripts path */
+	FString PluginRoot = IPluginManager::Get().FindPlugin("UnrealEnginePython")->GetBaseDir();
+	FString ScriptsPath = FPaths::Combine(PluginRoot, "Content/Scripts");
+	PyObject *py_plugin_scripts_path = PyUnicode_FromString(TCHAR_TO_UTF8(*ScriptsPath));
+	PyList_Insert(py_path, 0, py_plugin_scripts_path);
+
+	/* add the plugin paths - windows only */
+	FString PythonHome = FPaths::Combine(*FPaths::GamePluginsDir(), "UnrealEnginePython/Binaries/Win64");
+	char *python_path = TCHAR_TO_UTF8(*PythonHome);
+	char *site_path = TCHAR_TO_UTF8(*FPaths::Combine(*PythonHome, "Lib/site-packages"));
+	PyList_Insert(py_path, 0, PyUnicode_FromString(python_path));
+	PyList_Insert(py_path, 0, PyUnicode_FromString(site_path));
+
 	UESetupPythonInterpeter(true);
 
 	main_module = PyImport_AddModule("__main__");
@@ -126,6 +139,8 @@ void FUnrealEnginePythonModule::StartupModule()
 		"sys.stdout = UnrealEngineOutput(ue.log)\n"
 		"sys.stderr = UnrealEngineOutput(ue.log_error)\n";
 	PyRun_SimpleString(code);
+	//import upymodule_importer
+	PyImport_ImportModule("upymodule_importer");
 
 	if (PyImport_ImportModule("ue_site")) {
 		UE_LOG(LogPython, Log, TEXT("ue_site Python module successfully imported"));
@@ -134,6 +149,8 @@ void FUnrealEnginePythonModule::StartupModule()
 		// TODO gracefully manage the error
 		unreal_engine_py_log_error();
 	}
+
+	
 
 #if WITH_EDITOR
 	// register commands (after importing ue_site)
@@ -313,6 +330,45 @@ void FUnrealEnginePythonModule::RunFileSandboxed(char *filename) {
 #endif
 	Py_EndInterpreter(py_new_state);
 	PyThreadState_Swap(_main);
+}
+
+void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)
+{
+	PythonGILAcquire();
+
+	PyObject *py_sys = PyImport_ImportModule("sys");
+	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
+	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
+
+	char *charPath = TCHAR_TO_UTF8(*Path);
+	PyObject *py_scripts_path = PyUnicode_FromString(charPath);
+	PyList_Insert(py_path, 0, py_scripts_path);
+
+	PythonGILRelease();
+}
+
+void FUnrealEnginePythonModule::AddPythonDependentPlugin(const FString& PluginName)
+{
+	//Add plugin Content/Script to sys.path
+	FString PluginRoot = IPluginManager::Get().FindPlugin(PluginName)->GetBaseDir();
+	FString ScriptsPath = FPaths::Combine(PluginRoot, "Content/Scripts");
+	FUnrealEnginePythonModule::Get().AddPathToSysPath(ScriptsPath);
+	UE_LOG(LogPython, Log, TEXT("Added %s Plugin Content/Scripts (%s) to sys.path"), *PluginName, *ScriptsPath);
+
+	//run import interpreter on upythonmodule.json inside scripts
+	FString PyModulePath = FString::Printf(TEXT("%s/upymodule.json"), *ScriptsPath);
+	FString RunImport = FString::Printf(TEXT("import upymodule_importer\nupymodule_importer.parseJson('%s')"), *PyModulePath);
+
+ 	PythonGILAcquire();
+
+	if (PyRun_SimpleString(TCHAR_TO_UTF8(*RunImport)) == 0) {
+		UE_LOG(LogPython, Log, TEXT("%s Plugin upymodule.json parsed"), *PluginName);
+	}
+	else {
+		unreal_engine_py_log_error();
+	}
+
+	PythonGILRelease();
 }
 
 #undef LOCTEXT_NAMESPACE
