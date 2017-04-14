@@ -175,6 +175,8 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "get_discovered_plugins", py_unreal_engine_get_discovered_plugins, METH_VARARGS, "" },
 	{ "get_enabled_plugins", py_unreal_engine_get_enabled_plugins, METH_VARARGS, "" },
 	{ "find_plugin", py_unreal_engine_find_plugin, METH_VARARGS, "" },
+
+	{ "string_to_guid", py_unreal_engine_string_to_guid, METH_VARARGS, "" },
 #pragma warning(suppress: 4191)
 	{ "get_assets_by_filter", (PyCFunction)py_unreal_engine_get_assets_by_filter, METH_VARARGS | METH_KEYWORDS, "" },
 	{ "create_blueprint", py_unreal_engine_create_blueprint, METH_VARARGS, "" },
@@ -191,6 +193,8 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "create_material_instance", py_unreal_engine_create_material_instance, METH_VARARGS, "" },
 	{ "message_dialog_open", py_unreal_engine_message_dialog_open, METH_VARARGS, "" },
 	{ "set_fbx_import_option", py_unreal_engine_set_fbx_import_option, METH_VARARGS, "" },
+
+	{ "create_new_graph", py_unreal_engine_create_new_graph, METH_VARARGS, "" },
 
 	{ "editor_play", py_unreal_engine_editor_play, METH_VARARGS, "" },
 
@@ -286,6 +290,11 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "set_actor_rotation", (PyCFunction)py_ue_set_actor_rotation, METH_VARARGS, "" },
 	{ "set_actor_scale", (PyCFunction)py_ue_set_actor_scale, METH_VARARGS, "" },
 
+	{ "add_actor_world_offset", (PyCFunction)py_ue_add_actor_world_offset, METH_VARARGS, "" },
+	{ "add_actor_local_offset", (PyCFunction)py_ue_add_actor_local_offset, METH_VARARGS, "" },
+	{ "add_actor_world_rotation", (PyCFunction)py_ue_add_actor_world_rotation, METH_VARARGS, "" },
+	{ "add_actor_local_rotation", (PyCFunction)py_ue_add_actor_local_rotation, METH_VARARGS, "" },
+
 
 	{ "get_world_location", (PyCFunction)py_ue_get_world_location, METH_VARARGS, "" },
 	{ "get_world_rotation", (PyCFunction)py_ue_get_world_rotation, METH_VARARGS, "" },
@@ -337,6 +346,8 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_py_proxy", (PyCFunction)py_ue_get_py_proxy, METH_VARARGS, "" },
 
 	{ "post_edit_change", (PyCFunction)py_ue_post_edit_change, METH_VARARGS, "" },
+	{ "pre_edit_change", (PyCFunction)py_ue_pre_edit_change, METH_VARARGS, "" },
+	{ "modify", (PyCFunction)py_ue_modify, METH_VARARGS, "" },
 
 #if WITH_EDITOR
 	{ "save_config", (PyCFunction)py_ue_save_config, METH_VARARGS, "" },
@@ -349,6 +360,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "asset_reimport", (PyCFunction)py_ue_asset_reimport, METH_VARARGS, "" },
 
 	{ "factory_create_new", (PyCFunction)py_ue_factory_create_new, METH_VARARGS, "" },
+	{ "factory_import_object", (PyCFunction)py_ue_factory_import_object, METH_VARARGS, "" },
 
 	{ "graph_add_node_call_function", (PyCFunction)py_ue_graph_add_node_call_function, METH_VARARGS, "" },
 	{ "graph_add_node_custom_event", (PyCFunction)py_ue_graph_add_node_custom_event, METH_VARARGS, "" },
@@ -361,6 +373,8 @@ static PyMethodDef ue_PyUObject_methods[] = {
 
 	{ "node_pins", (PyCFunction)py_ue_node_pins, METH_VARARGS, "" },
 	{ "node_find_pin", (PyCFunction)py_ue_node_find_pin, METH_VARARGS, "" },
+
+	{ "get_material_graph", (PyCFunction)py_ue_get_material_graph, METH_VARARGS, "" },
 #endif
 
 	{ "is_rooted", (PyCFunction)py_ue_is_rooted, METH_VARARGS, "" },
@@ -550,12 +564,23 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "sequencer_folders", (PyCFunction)py_ue_sequencer_folders, METH_VARARGS, "" },
 	{ "sequencer_set_display_name", (PyCFunction)py_ue_sequencer_set_display_name, METH_VARARGS, "" },
 	{ "sequencer_get_display_name", (PyCFunction)py_ue_sequencer_get_display_name, METH_VARARGS, "" },
+	{ "sequencer_changed", (PyCFunction)py_ue_sequencer_changed, METH_VARARGS, "" },
 #endif
 	{ "sequencer_sections", (PyCFunction)py_ue_sequencer_sections, METH_VARARGS, "" },
 	{ "sequencer_track_sections", (PyCFunction)py_ue_sequencer_track_sections, METH_VARARGS, "" },
 	{ "sequencer_possessables", (PyCFunction)py_ue_sequencer_possessables, METH_VARARGS, "" },
+	{ "sequencer_possessables_guid", (PyCFunction)py_ue_sequencer_possessables_guid, METH_VARARGS, "" },
 	{ "sequencer_find_possessable", (PyCFunction)py_ue_sequencer_find_possessable, METH_VARARGS, "" },
 	{ "sequencer_add_master_track", (PyCFunction)py_ue_sequencer_add_master_track, METH_VARARGS, "" },
+	{ "sequencer_add_camera_cut_track", (PyCFunction)py_ue_sequencer_add_camera_cut_track, METH_VARARGS, "" },
+
+	{ "sequencer_add_track", (PyCFunction)py_ue_sequencer_add_track, METH_VARARGS, "" },
+	{ "sequencer_add_actor", (PyCFunction)py_ue_sequencer_add_actor, METH_VARARGS, "" },
+
+	{ "sequencer_add_possessable", (PyCFunction)py_ue_sequencer_add_possessable, METH_VARARGS, "" },
+	{ "sequencer_track_add_section", (PyCFunction)py_ue_sequencer_track_add_section, METH_VARARGS, "" },
+
+	{ "sequencer_section_add_key", (PyCFunction)py_ue_sequencer_section_add_key, METH_VARARGS, "" },
 
 	// Material
 	{ "set_material", (PyCFunction)py_ue_set_material, METH_VARARGS, "" },
@@ -601,8 +626,8 @@ void ue_pydelegates_cleanup(ue_PyUObject *self) {
 			UE_LOG(LogPython, Warning, TEXT("Removing UPythonDelegate %p from ue_PyUObject %p mapped to UObject %p"), py_delegate, self, self->ue_object);
 #endif
 			py_delegate->RemoveFromRoot();
-		}
 	}
+}
 	self->python_delegates_gc->clear();
 	delete self->python_delegates_gc;
 	self->python_delegates_gc = nullptr;
@@ -750,7 +775,9 @@ static PyObject *ue_PyUObject_call(ue_PyUObject *self, PyObject *args, PyObject 
 		Py_INCREF((PyObject *)self);
 		PyTuple_SetItem(py_args, 0, (PyObject *)self);
 		if (py_name) {
+			Py_INCREF(py_outer);
 			PyTuple_SetItem(py_args, 1, py_outer);
+			Py_INCREF(py_name);
 			PyTuple_SetItem(py_args, 2, py_name);
 		}
 		PyObject *ret = py_unreal_engine_new_object(nullptr, py_args);
@@ -765,6 +792,37 @@ static PyObject *ue_PyUObject_call(ue_PyUObject *self, PyObject *args, PyObject 
 #if WITH_EDITOR
 		u_script_struct->InitializeDefaultValue(data);
 #endif
+		if (kw) {
+			PyObject *struct_keys = PyObject_GetIter(kw);
+			for (;;) {
+				PyObject *key = PyIter_Next(struct_keys);
+				if (!key) {
+					if (PyErr_Occurred())
+						return PyErr_Format(PyExc_Exception, "unable to build struct from dictionary");
+					break;
+				}
+				if (!PyUnicodeOrString_Check(key))
+					continue;
+				char *struct_key = PyUnicode_AsUTF8(key);
+
+				PyObject *value = PyDict_GetItem(kw, key);
+				if (!value) {
+					if (PyErr_Occurred())
+						return PyErr_Format(PyExc_Exception, "unable to build struct from dictionary");
+					break;
+				}
+
+				UProperty *u_property = ue_struct_get_field_from_name(u_script_struct, struct_key);
+				if (u_property) {
+					if (!ue_py_convert_pyobject(value, u_property, data)) {
+						return PyErr_Format(PyExc_Exception, "invalid value for UProperty");
+					}
+				}
+				else {
+					return PyErr_Format(PyExc_Exception, "UProperty %s not found", struct_key);
+				}
+			}
+		}
 		return py_ue_new_uscriptstruct(u_script_struct, data);
 	}
 	return PyErr_Format(PyExc_Exception, "the specified uobject has no __call__ support");
@@ -1291,7 +1349,7 @@ void unreal_engine_py_log_error() {
 	}
 
 	PyErr_Clear();
-}
+	}
 
 // retrieve a UWorld from a generic UObject (if possible)
 UWorld *ue_get_uworld(ue_PyUObject *py_obj) {
@@ -1710,6 +1768,20 @@ bool ue_py_convert_pyobject(PyObject *py_obj, UProperty *prop, uint8 *buffer) {
 			casted_prop->SetObjectPropertyValue_InContainer(buffer, ue_obj->ue_object);
 			return true;
 		}
+	}
+
+	if (py_obj == Py_None) {
+		auto casted_prop_class = Cast<UClassProperty>(prop);
+		if (casted_prop_class) {
+			casted_prop_class->SetPropertyValue_InContainer(buffer, nullptr);
+			return true;
+		}
+		auto casted_prop = Cast<UObjectPropertyBase>(prop);
+		if (casted_prop) {
+			casted_prop->SetObjectPropertyValue_InContainer(buffer, nullptr);
+			return true;
+		}
+		return false;
 	}
 
 	return false;

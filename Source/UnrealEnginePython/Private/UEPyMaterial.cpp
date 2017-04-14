@@ -1,6 +1,11 @@
 
 
 #include "UnrealEnginePythonPrivatePCH.h"
+#if WITH_EDITOR
+#include "Editor/UnrealEd/Classes/MaterialGraph/MaterialGraph.h"
+#include "Editor/UnrealEd/Public/Kismet2/BlueprintEditorUtils.h"
+#include "Editor/UnrealEd/Classes/MaterialGraph/MaterialGraphSchema.h"
+#endif
 
 PyObject *py_ue_set_material_scalar_parameter(ue_PyUObject *self, PyObject * args) {
 
@@ -416,6 +421,29 @@ PyObject *py_ue_static_mesh_set_shadow_for_lod(ue_PyUObject *self, PyObject * ar
 
 	Py_INCREF(Py_None);
 	return Py_None;
+}
+
+PyObject *py_ue_get_material_graph(ue_PyUObject *self, PyObject * args) {
+
+	ue_py_check(self);
+
+	if (!self->ue_object->IsA<UMaterial>()) {
+		return PyErr_Format(PyExc_Exception, "uobject is not a UMaterialInterface");
+	}
+
+	UMaterial *material = (UMaterial *)self->ue_object;
+
+	UMaterialGraph *graph = material->MaterialGraph;
+	if (!graph)
+		material->MaterialGraph = (UMaterialGraph *)FBlueprintEditorUtils::CreateNewGraph(material, NAME_None, UMaterialGraph::StaticClass(), UMaterialGraphSchema::StaticClass());
+	if (!graph)
+		return PyErr_Format(PyExc_Exception, "Unable to retrieve/allocate MaterialGraph");
+
+	ue_PyUObject *ret = ue_get_python_wrapper(graph);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "PyUObject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
 }
 
 #endif

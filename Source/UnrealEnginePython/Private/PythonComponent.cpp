@@ -95,7 +95,7 @@ void UPythonComponent::BeginPlay()
 	// ...
 
 	InitializePythonComponent();
-	
+
 }
 
 
@@ -371,6 +371,40 @@ FString UPythonComponent::CallPythonComponentMethodString(FString method_name, F
 	return ret_fstring;
 }
 
+UObject *UPythonComponent::CallPythonComponentMethodObject(FString method_name, UObject *arg)
+{
+	if (!py_component_instance)
+		return nullptr;
+
+	FScopePythonGIL gil;
+
+	PyObject *ret = nullptr;
+	if (!arg) {
+		ret = PyObject_CallMethod(py_component_instance, TCHAR_TO_UTF8(*method_name), NULL);
+	}
+	else {
+		PyObject *py_arg_uobject = (PyObject *)ue_get_python_wrapper(arg);
+		if (!py_arg_uobject) {
+			unreal_engine_py_log_error();
+			return nullptr;
+		}
+		ret = PyObject_CallMethod(py_component_instance, TCHAR_TO_UTF8(*method_name), (char *)"O", py_arg_uobject);
+	}
+
+	if (!ret) {
+		unreal_engine_py_log_error();
+		return nullptr;
+	}
+
+	if (ue_is_pyuobject(ret)) {
+		ue_PyUObject *py_obj = (ue_PyUObject *)ret;
+		return py_obj->ue_object;
+	}
+	return nullptr;
+}
+
+
+
 void UPythonComponent::CallPythonComponentMethodStringArray(FString method_name, FString args, TArray<FString> &output_strings)
 {
 	if (!py_component_instance)
@@ -432,7 +466,7 @@ UPythonComponent::~UPythonComponent()
 	}
 #endif
 	Py_XDECREF(py_component_instance);
-	
+
 #if defined(UEPY_MEMORY_DEBUG)
 	UE_LOG(LogPython, Warning, TEXT("Python UActorComponent %p (mapped to %p) wrapper XDECREF'ed"), this, py_uobject ? py_uobject->ue_object : nullptr);
 #endif

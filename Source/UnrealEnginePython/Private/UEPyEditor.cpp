@@ -199,7 +199,8 @@ PyObject *py_unreal_engine_import_asset(PyObject * self, PyObject * args) {
 	PyObject * assetsObject = nullptr;
 	char *destination;
 	PyObject *obj = nullptr;
-	if (!PyArg_ParseTuple(args, "Os|O:import_asset", &assetsObject, &destination, &obj)) {
+	PyObject *py_sync = nullptr;
+	if (!PyArg_ParseTuple(args, "Os|OO:import_asset", &assetsObject, &destination, &obj, &py_sync)) {
 		return NULL;
 	}
 
@@ -211,6 +212,7 @@ PyObject *py_unreal_engine_import_asset(PyObject * self, PyObject * args) {
 
 	UClass *factory_class = nullptr;
 	UFactory *factory = nullptr;
+	bool sync_to_browser = false;
 
 	if (!obj || obj == Py_None) {
 		factory_class = nullptr;
@@ -279,13 +281,17 @@ PyObject *py_unreal_engine_import_asset(PyObject * self, PyObject * args) {
 		char * filename = PyString_AsString(PyObject_Str(assetsObject));
 #endif
 		files.Add(UTF8_TO_TCHAR(filename));
-}
+	}
 	else {
 		return PyErr_Format(PyExc_Exception, "Not a string nor valid list of string");
 	}
 
+	if (py_sync && PyObject_IsTrue(py_sync)) {
+		sync_to_browser = true;
+	}
+
 	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools");
-	TArray<UObject *> objects = AssetToolsModule.Get().ImportAssets(files, UTF8_TO_TCHAR(destination), factory, false);
+	TArray<UObject *> objects = AssetToolsModule.Get().ImportAssets(files, UTF8_TO_TCHAR(destination), factory, sync_to_browser);
 
 	if (objects.Num() == 1) {
 
@@ -487,12 +493,18 @@ PyObject *py_unreal_engine_duplicate_asset(PyObject * self, PyObject * args) {
 
 PyObject *py_unreal_engine_delete_asset(PyObject * self, PyObject * args) {
 	char *path;
-	if (!PyArg_ParseTuple(args, "s:delete_asset", &path)) {
+	PyObject *py_show_confirmation = nullptr;
+	if (!PyArg_ParseTuple(args, "s|O:delete_asset", &path, &py_show_confirmation)) {
 		return NULL;
 	}
 
 	if (!GEditor)
 		return PyErr_Format(PyExc_Exception, "no GEditor found");
+
+	bool show_confirmation = false;
+	if (py_show_confirmation && PyObject_IsTrue(py_show_confirmation)) {
+		show_confirmation = true;
+	}
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	FAssetData asset = AssetRegistryModule.Get().GetAssetByObjectPath(UTF8_TO_TCHAR(path));
@@ -501,7 +513,10 @@ PyObject *py_unreal_engine_delete_asset(PyObject * self, PyObject * args) {
 
 	UObject *u_object = asset.GetAsset();
 
-	if (!ObjectTools::DeleteSingleObject(u_object)) {
+	TArray<UObject *> objects;
+	objects.Add(u_object);
+
+	if (ObjectTools::ForceDeleteObjects(objects, show_confirmation) < 1) {
 		return PyErr_Format(PyExc_Exception, "unable to delete asset %s", path);
 	}
 
@@ -1116,6 +1131,56 @@ PyObject *py_unreal_engine_blueprint_add_ubergraph_page(PyObject * self, PyObjec
 	return ret;
 }
 
+PyObject *py_unreal_engine_create_new_graph(PyObject * self, PyObject * args) {
+
+	PyObject *py_object;
+	char *name;
+	PyObject *py_graph_class;
+	PyObject *py_graph_schema;
+	if (!PyArg_ParseTuple(args, "OsOO:create_new_graph", &py_object, &name, &py_graph_class, &py_graph_schema)) {
+		return NULL;
+	}
+
+	if (!ue_is_pyuobject(py_object)) {
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+	}
+	ue_PyUObject *py_obj = (ue_PyUObject *)py_object;
+
+	if (!ue_is_pyuobject(py_graph_class)) {
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+	}
+	ue_PyUObject *py_class_obj = (ue_PyUObject *)py_graph_class;
+	if (!py_class_obj->ue_object->IsA<UClass>()) {
+		return PyErr_Format(PyExc_Exception, "argument is not a UClass");
+	}
+	UClass *u_class = (UClass *)py_class_obj->ue_object;
+	if (!u_class->IsChildOf<UEdGraph>()) {
+		return PyErr_Format(PyExc_Exception, "argument is not a child of UEdGraph");
+	}
+
+	if (!ue_is_pyuobject(py_graph_schema)) {
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+	}
+	ue_PyUObject *py_class_schema = (ue_PyUObject *)py_graph_schema;
+	if (!py_class_schema->ue_object->IsA<UClass>()) {
+		return PyErr_Format(PyExc_Exception, "argument is not a UClass");
+	}
+	UClass *u_class_schema = (UClass *)py_class_schema->ue_object;
+	if (!u_class_schema->IsChildOf<UEdGraphSchema>()) {
+		return PyErr_Format(PyExc_Exception, "argument is not a child of UEdGraphSchema");
+	}
+
+	UEdGraph *graph = FBlueprintEditorUtils::CreateNewGraph(py_obj->ue_object, FName(UTF8_TO_TCHAR(name)), u_class, u_class_schema);
+	if (!graph) {
+		return PyErr_Format(PyExc_Exception, "unable to create graph");
+	}
+	PyObject *ret = (PyObject *)ue_get_python_wrapper(graph);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+	Py_INCREF(ret);
+	return ret;
+}
+
 PyObject *py_unreal_engine_editor_blueprint_graphs(PyObject * self, PyObject * args) {
 	PyObject *py_blueprint;
 
@@ -1240,6 +1305,45 @@ PyObject *py_ue_factory_create_new(ue_PyUObject *self, PyObject * args) {
 	}
 
 	UObject *u_object = factory->FactoryCreateNew(u_class, outer, FName(UTF8_TO_TCHAR(obj_name)), RF_Public | RF_Standalone, nullptr, GWarn);
+
+	if (!u_object)
+		return PyErr_Format(PyExc_Exception, "unable to create new object from factory");
+
+	FAssetRegistryModule::AssetCreated(u_object);
+	outer->MarkPackageDirty();
+
+	ue_PyUObject *ret = ue_get_python_wrapper(u_object);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+
+	Py_INCREF(ret);
+	return (PyObject *)ret;
+}
+
+PyObject *py_ue_factory_import_object(ue_PyUObject *self, PyObject * args) {
+
+	ue_py_check(self);
+
+	char *filename = nullptr;
+	char *name = nullptr;
+	if (!PyArg_ParseTuple(args, "ss:factory_import_object", &filename, &name)) {
+		return NULL;
+	}
+
+	if (!self->ue_object->IsA<UFactory>())
+		return PyErr_Format(PyExc_Exception, "uobject is not a Factory");
+
+	UFactory *factory = (UFactory *)self->ue_object;
+
+	FString object_name = ObjectTools::SanitizeObjectName(FPaths::GetBaseFilename(UTF8_TO_TCHAR(filename)));
+	FString pkg_name = FString(UTF8_TO_TCHAR(name)) + TEXT("/") + object_name;
+
+	UPackage *outer = CreatePackage(nullptr, *pkg_name);
+	if (!outer)
+		return PyErr_Format(PyExc_Exception, "unable to create package");
+
+	bool canceled = false;
+	UObject *u_object = factory->ImportObject(factory->ResolveSupportedClass(), outer, FName(*object_name), RF_Public | RF_Standalone, UTF8_TO_TCHAR(filename), nullptr, canceled);
 
 	if (!u_object)
 		return PyErr_Format(PyExc_Exception, "unable to create new object from factory");
