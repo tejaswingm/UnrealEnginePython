@@ -27,7 +27,7 @@ public class UnrealEnginePython : ModuleRules
     //private string PythonHome = "/usr/local/Cellar/python3/3.6.0/Frameworks/Python.framework/Versions/3.6/";
     //Swap python versions here
     private string PythonType = "Python35";
-    //private string PythonType = "Python27";
+    //private string PythonType = "python27";
 
     private string ThirdPartyPath
     {
@@ -136,8 +136,11 @@ public class UnrealEnginePython : ModuleRules
 
                 System.Console.WriteLine("Using Python at: " + PythonHome);
                 PublicIncludePaths.Add(PythonHome);
-                //PublicLibraryPaths.Add(Path.GetDirectoryName(libPath));
-                PublicAdditionalLibraries.Add(Path.Combine(PythonHome, "Lib", string.Format("{0}.lib", PythonType)));
+                string libPath = Path.Combine(PythonHome, "Lib", string.Format("{0}.lib", PythonType.ToLower()));
+
+                System.Console.WriteLine("full lib path: " + libPath);
+                PublicLibraryPaths.Add(Path.GetDirectoryName(libPath));
+                PublicAdditionalLibraries.Add(libPath);
             }
             else if (PythonHome == "")
             {
