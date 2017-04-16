@@ -69,22 +69,22 @@ static void UESetupPythonInterpeter(bool verbose) {
 
 	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
 
-	char *zip_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("ue_python.zip")));
+	char *zip_path = TCHAR_TO_UTF8(*FPaths::ConvertRelativePathToFull(FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("ue_python.zip"))));
 	PyObject *py_zip_path = PyUnicode_FromString(zip_path);
 	PyList_Insert(py_path, 0, py_zip_path);
 
-	char *scripts_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts")));
+	char *scripts_path = TCHAR_TO_UTF8(*FPaths::ConvertRelativePathToFull(FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"))));
 	PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
 	PyList_Insert(py_path, 0, py_scripts_path);
 
 	/* UnrealEnginePython Plugin Content/Scripts path */
 	FString PluginRoot = IPluginManager::Get().FindPlugin("UnrealEnginePython")->GetBaseDir();
-	FString ScriptsPath = FPaths::Combine(PluginRoot, "Content/Scripts");
+	FString ScriptsPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(PluginRoot, "Content/Scripts"));
 	PyObject *py_plugin_scripts_path = PyUnicode_FromString(TCHAR_TO_UTF8(*ScriptsPath));
 	PyList_Insert(py_path, 0, py_plugin_scripts_path);
 
 	/* add the plugin paths - windows only */
-	FString PythonHome = FPaths::Combine(*FPaths::GamePluginsDir(), "UnrealEnginePython/Binaries/Win64");
+	FString PythonHome = FPaths::ConvertRelativePathToFull(FPaths::Combine(*FPaths::GamePluginsDir(), "UnrealEnginePython/Binaries/Win64"));
 	char *python_path = TCHAR_TO_UTF8(*PythonHome);
 	char *site_path = TCHAR_TO_UTF8(*FPaths::Combine(*PythonHome, "Lib/site-packages"));
 	PyList_Insert(py_path, 0, PyUnicode_FromString(python_path));
@@ -351,7 +351,7 @@ void FUnrealEnginePythonModule::AddPythonDependentPlugin(const FString& PluginNa
 {
 	//Add plugin Content/Script to sys.path
 	FString PluginRoot = IPluginManager::Get().FindPlugin(PluginName)->GetBaseDir();
-	FString ScriptsPath = FPaths::Combine(PluginRoot, "Content/Scripts");
+	FString ScriptsPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(PluginRoot, "Content/Scripts"));
 	FUnrealEnginePythonModule::Get().AddPathToSysPath(ScriptsPath);
 	UE_LOG(LogPython, Log, TEXT("Added %s Plugin Content/Scripts (%s) to sys.path"), *PluginName, *ScriptsPath);
 
