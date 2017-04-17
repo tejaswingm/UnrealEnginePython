@@ -649,9 +649,17 @@ static PyObject *ue_PyUObject_getattro(ue_PyUObject *self, PyObject *attr_name) 
 	PyObject *ret = PyObject_GenericGetAttr((PyObject *)self, attr_name);
 	if (!ret) {
 		if (PyUnicodeOrString_Check(attr_name)) {
+			//Valid uobject?
+			if (!self->ue_object->IsValidLowLevel())
+			{
+				UE_LOG(LogPython, Warning, TEXT("Invalid ue_PyUObject %p mapped to UObject %p"), self, self->ue_object);
+				return ret;
+			}
+
 			char *attr = PyUnicode_AsUTF8(attr_name);
 			// first check for property
 			UStruct *u_struct = nullptr;
+
 			if (self->ue_object->IsA<UStruct>()) {
 				u_struct = (UStruct *)self->ue_object;
 			}

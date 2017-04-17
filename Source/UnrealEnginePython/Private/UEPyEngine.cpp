@@ -466,6 +466,7 @@ PyObject *py_unreal_engine_all_classes(PyObject * self, PyObject * args) {
 }
 
 PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObject * args) {
+
 	PyObject *py_callable = nullptr;
 	PyObject *py_params = nullptr;
 
@@ -509,6 +510,8 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 
 	const PyObject* py_callable_s = py_callable;
 	const PyObject* py_params_s = py_params;
+
+
 	FGraphEventRef task = FFunctionGraphTask::CreateAndDispatchWhenReady([&, py_callable_s, py_params_s]() {
 		//UE_LOG(LogPython, Log, TEXT("In task graph, are in game thread? %d"), IsInGameThread());
 
@@ -548,7 +551,7 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 		}
 		Py_DECREF(py_callable_s);
 	}, TStatId(), nullptr, ENamedThreads::GameThread);
-
+	
 	Py_INCREF(Py_None);
 	return Py_None;
 }
