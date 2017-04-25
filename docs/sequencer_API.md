@@ -1,73 +1,130 @@
-The Sequencer API (Work in progress)
-------------------------------------
+The Sequencer API
+-----------------
 
-Credits go to Ron Fischer for having explained me the sequencer api.
+The sequencer API development has been sponsored by Matthew Whelan (http://www.mattwhelan.com/)
 
-NOTE: seq_obj in the following docs is a reference to a ULevelSequence object.
+Credits should go to Ron Fischer too, for having explained me the sequencer api ;)
 
-NOTE2: GUID's are always managed as python strings
+Creating a Sequencer Asset
+--------------------------
 
-NOTE3: track_obj in the following docs is a reference to a UMovieSceneTrack object.
+You can create a new 'Level Sequence' asset using the LevelSequencerFactoryNew class:
 
-```py
-seq_obj.sequencer_master_tracks()
+```python
+from unreal_engine.classes import LevelSequenceFactoryNew
+
+factory = LevelSequenceFactoryNew()
+seq = factory.factory_create_new('/Game/MovieMaster')
 ```
 
-returns a list of the sequencer master tracks
+Adding a master track to a Level Sequence
+-----------------------------------------
 
-```py
-seq_obj.sequencer_possessables()
+In the following example we add a MovieSceneAudioTrack as a master track
+
+```python
+from unreal_engine.classes import MovieSceneAudioTrack
+
+audio_track = seq.sequencer_add_master_track(MovieSceneAudioTrack)
 ```
 
-returns the list of possessables mapped to a sequencer. The list is composed by 3-items tuples, first item is the possessable guid, second is the name, third is the reference to the possessable class
+Getting the available track classes
+-----------------------------------
 
+the following snippet prints the name of the MovieSceneTrack classes
 
+```python
+import unreal_engine as ue
+from unreal_engine.classes import MovieSceneTrack
 
-```py
-seq_obj.sequencer_find_possessable(guid)
+for uclass in ue.all_classes():
+    if uclass.is_child_of(MovieSceneTrack):
+        print(uclass.get_name())
 ```
 
-get the UObject given a GUID
+Getting the list of master tracks
+---------------------------------
 
-```py
-seq_obj.sequencer_possessable_tracks(guid)
+```python
+tracks = seq.sequencer_master_tracks()
 ```
 
-returns the list of tracks mapped to a possessable guid
+Possessables and Spawnables
+---------------------------
 
-```py
-track_obj.sequencer_track_sections()
+Adding tracks
+-------------
+
+Adding a section to a track
+---------------------------
+
+This is a pretty complex example, we add a skeletal animation track and then we add a bunch of sections (each of them should point to an animation asset using the AnimSequence field)
+
+```python
+from unreal_engine.classes import MovieSceneSkeletalAnimationTrack
+
+# add an animation track mapped to the just added actor
+anim = seq.sequencer_add_track(MovieSceneSkeletalAnimationTrack, guid)
+
+# create 3 animations sections (assign AnimSequence field to set the animation to play)
+anim_sequence = anim.sequencer_track_add_section()
+anim_sequence.StartTime = 1
+anim_sequence.EndTime = 3
+anim_sequence.RowIndex = 0
+
+anim_sequence2 = anim.sequencer_track_add_section()
+anim_sequence2.RowIndex = 1
+anim_sequence2.StartTime = 2
+anim_sequence2.EndTime = 5
+
+anim_sequence3 = anim.sequencer_track_add_section()
+anim_sequence3.RowIndex = 1
+anim_sequence3.SlotName = 'Hello'
+anim_sequence3.StartTIme = 0
+anim_sequence3.EndTime = 30
 ```
 
-get the list of sections in a track
+Adding Keyframes to sections
+----------------------------
 
-```py
-seq_obj.sequencer_sections()
+Managing the camera cut track
+-----------------------------
+
+Folders
+-------
+
+listing folders
+
+```python
+
+# get the root folders
+root_folders = seq.sequencer_folders()
+
+# get subfolders
+sub_folders = seq.sequencer_folders(root_folders[0])
 ```
 
-get the list of all sections in a sequencer
+creating folders
 
-```py
-seq_obj.sequencer_folders()
+```python
+new_folder = seq.sequencer_create_folder('Folder001')
+
+# create subfolder
+new_sub_folder = seq.sequencer_create_folder('SubFolder001', new_folder)
 ```
 
-get the list of folders in a sequencer
+Notify changes to the editor
+----------------------------
 
-```py
-new_track = seq_obj.sequencer_add_master_track(u_class)
+Some of the sequencer api operations do not update the editor, if you need to force an update you can use
+
+```python
+seq.sequencer_changed(True)
 ```
 
-add a new master track. u_class must be a class child of UMovieSceneTrack, like ue.find_class('MovieSceneAudioTrack')
+the boolean argument (if True) move the editor focus to the sequencer
 
+Example
+-------
 
-```py
-name = track_obj.sequencer_get_display_name()
-```
-
-(editor only) get the display name of various seqnecer objects (currently only tracks are supported)
-
-```py
-track_obj.sequencer_set_display_name(name)
-```
-
-(editor only) set the display name of various seqnecer objects (currently only tracks are supported)
+Check it here: https://github.com/20tab/UnrealEnginePython/blob/master/examples/sequencer_scripting.py

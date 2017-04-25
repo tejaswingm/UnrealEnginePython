@@ -124,7 +124,9 @@ public class UnrealEnginePython : ModuleRules
                 "MovieSceneTracks",
                 "CinematicCamera",
                 "EditorStyle",
+                "GraphEditor",
                 "UMGEditor",
+                "AIGraph",
             });
         }
 

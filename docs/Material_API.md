@@ -24,11 +24,26 @@ component.set_material(index, material);
 Creating a Material (editor only)
 ---------------------------------
 
+This is the 'raw' way for creating a Material
+
 ```python
 from unreal_engine.classes import Material
 new_material = Material()
 new_material.set_name('New Funny Material')
 new_material.save_package('/Game/Materials/NewFunnyMaterial')
+```
+
+Even better, you can use the MaterialFactoryNew class
+
+```python
+from unreal_engine.classes import MaterialFactoryNew
+import unreal_engine as ue
+
+factory = MaterialFactoryNew()
+new_material = factory.factory_create_new('/Game/Materials/NewFunnyMaterial')
+
+# destroy the asset
+ue.delete_asset(new_material.get_path_name())
 ```
 
 Creating a Material Instance (editor only)
@@ -55,10 +70,25 @@ import unreal_engine as ue
 material_instance = ue.create_material_instance(new_material)
 ```
 
+Or the factory way:
+
+```python
+from unreal_engine.classes import Material, MaterialInstanceConstantFactoryNew
+
+factory = MaterialInstanceConstantFactoryNew()
+
+# get a reference to a parent material
+parent_material = ue.load_object(Material, '/Game/MainMaterial')
+
+factory.InitialParent = parent_material
+
+child_material = factory.factory_create_new('/Game/ChildMaterial')
+```
+
 Creating a Material Instance Dynamic
 ------------------------------------
 
-You can create a MID (Material Instance Dynamic) from a ,aterial instance:
+You can create a MID (Material Instance Dynamic) from a material instance:
 
 ```python
 mid = self.uobject.create_material_instance_dynamic(material_instance)
