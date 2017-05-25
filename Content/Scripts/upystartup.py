@@ -3,6 +3,7 @@ import unreal_engine as ue
 import json
 import upycmd as cmd
 from os import listdir
+from os import path as ospath
 
 from upypip import pip
 
@@ -12,23 +13,26 @@ def checkPipDirectory():
 	correctPipPath = cmd.PythonHomeScriptsPath()
 
 	#compare our current pip directory with the installed one, if they differ reinstall pip
-	try:
-		with open(configPath, "r+") as configFile:
-			configs = json.load(configFile)
+	
+	with open(configPath, "r+") as configFile:
+		configs = json.load(configFile)
 
-			#grab currently stored path
-			storedPipPath = configs['pipDirectoryPath']
+		#grab currently stored path
+		storedPipPath = configs['pipDirectoryPath']
 
-			print('upystartup::Checking pip location on startup')
-			print('upystartup::stored loc: ' + storedPipPath)
-			print('upystartup::correct loc: ' + correctPipPath)
+		print('upystartup::Checking pip location on startup')
+		print('upystartup::stored loc: ' + storedPipPath)
+		print('upystartup::correct loc: ' + correctPipPath)
 
-			#compare paths
-			if (storedPipPath != correctPipPath):
-				#if they don't match, remove the pip module and reinstall pip for this module
+		libPath = cmd.PythonHomePath() + '/Lib/site-packages'
+
+		#compare paths
+		if (storedPipPath != correctPipPath or
+			not ospath.exists(libPath)):
+		
+			#if they don't match, remove the pip module and reinstall pip for this module
+			if (ospath.exists(libPath)):
 				print('upystartup::Pip installation directory is stale, re-installing.')
-
-				libPath = cmd.PythonHomePath() + '/Lib/site-packages'
 				dirs = listdir(libPath)
 
 				tempPath = None
@@ -44,25 +48,31 @@ def checkPipDirectory():
 					#remove the old directory
 					print('removing old: ' + tempPath)
 					cmd.run('rmdir /S /Q "' + tempPath + '"')
-				
-				#install pip
-				print(cmd.PythonHomePath() + '/get-pip.py')
-
-				print('Installing pip...')
-				cmd.runLogOutput('InstallPip.bat')
-
-				#update our stored location
-				configs['pipDirectoryPath'] = correctPipPath
-				configFile.seek(0)
-				configFile.write(json.dumps(configs))
-				configFile.truncate()
-
-				#done
-				print('upystartup::updated pip.exe location in <' + configPath + '>')
 
 			else:
-				print('upystartup::pip location is up to date.')
+				#site path doesn't even exist
+				print("Lib/site-packages misssing, re-installing pip.")
+			
+			#install pip
+			print(cmd.PythonHomePath() + '/get-pip.py')
 
+			print('Installing pip...')
+			cmd.runLogOutput('InstallPip.bat')
+
+			#update our stored location
+			configs['pipDirectoryPath'] = correctPipPath
+			configFile.seek(0)
+			configFile.write(json.dumps(configs))
+			configFile.truncate()
+
+			#done
+			print('upystartup::updated pip.exe location in <' + configPath + '>')
+
+		else:
+			print('upystartup::pip location is up to date.')
+
+	try:
+		pass
 	except:
 		e = sys.exc_info()
 		ue.log('upyconfig.json error: ' + str(e))
