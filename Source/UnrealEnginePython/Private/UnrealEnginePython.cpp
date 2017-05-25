@@ -142,6 +142,11 @@ void FUnrealEnginePythonModule::StartupModule()
 	//import upymodule_importer
 	PyImport_ImportModule("upymodule_importer");
 
+	char const* startupCode = 
+		"import upystartup\n"
+		"upystartup.startup()\n";
+	PyRun_SimpleString(startupCode);
+
 	if (PyImport_ImportModule("ue_site")) {
 		UE_LOG(LogPython, Log, TEXT("ue_site Python module successfully imported"));
 	}
