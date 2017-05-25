@@ -71,12 +71,6 @@ def checkPipDirectory():
 		else:
 			print('upystartup::pip location is up to date.')
 
-	try:
-		pass
-	except:
-		e = sys.exc_info()
-		ue.log('upyconfig.json error: ' + str(e))
-
 #add any startup action you wish to perform in python
 def startup():
 	#check that our pip directory matches for pip.exe commands
