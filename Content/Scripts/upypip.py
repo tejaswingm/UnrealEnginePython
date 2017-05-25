@@ -68,4 +68,10 @@ class PipInstall:
 		t = Thread(target=action)
 		t.start()
 
+	def uninstallAll(self):
+		PipInstall.modules = None #our cache is no longer valid
+		action = self.pipModuleAction
+		t = Thread(target=action, args=('freeze','> unins && pip uninstall -y -r unins && del unins',))
+		t.start()
+
 pip = PipInstall()
