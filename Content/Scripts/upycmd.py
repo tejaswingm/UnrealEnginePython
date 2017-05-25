@@ -21,6 +21,17 @@ def PythonHomeScriptsPath():
 	home = PythonHomePath()
 	return home + "/Scripts"
 
+def PythonPluginScriptPath():
+	tempPath = "not found"
+
+	for path in sys.path:
+		if ('UnrealEnginePython' in path and
+			path.endswith('Content/Scripts')):
+			tempPath = path
+			break
+
+	return tempPath
+
 _PythonHomePath = PythonHomePath()
 
 def FolderCommand(folder):
@@ -41,6 +52,13 @@ def run(process, path=_PythonHomePath, verbose=True):
 		ue.log("cmd Result: ")
 		ue.log(stdoutdata[1])
 	return stdoutdata[1] #return the data for dependent functions
+
+#convenience override
+def runLogOutput(process, path=_PythonHomePath):
+	fullcommand = FolderCommand(path) + process
+	stdoutdata = subprocess.getstatusoutput(fullcommand)
+	ue.log(stdoutdata[1])
+	return stdoutdata[1]
 
 #convenience wrappers
 def dir(path=_PythonHomePath):

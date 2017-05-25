@@ -11,36 +11,60 @@ def checkPipDirectory():
 	configPath = cmd.PythonPluginScriptPath() + '/upyconfig.json'
 	correctPipPath = cmd.PythonHomeScriptsPath()
 
-	#let's test our pip directory path
+	#compare our current pip directory with the installed one, if they differ reinstall pip
 	try:
-		with open(configPath) as data_file:
-			configs = json.load(data_file)
+		with open(configPath, "r+") as configFile:
+			configs = json.load(configFile)
 
 			#grab currently stored path
 			storedPipPath = configs['pipDirectoryPath']
 
-			print(storedPipPath)
-			print(tempPath)
+			print('upystartup::Checking pip location on startup')
+			print('upystartup::stored loc: ' + storedPipPath)
+			print('upystartup::correct loc: ' + correctPipPath)
 
 			#compare paths
 			if (storedPipPath != correctPipPath):
 				#if they don't match, remove the pip module and reinstall pip for this module
-				
+				print('upystartup::Pip installation directory is stale, re-installing.')
+
 				libPath = cmd.PythonHomePath() + '/Lib/site-packages'
 				dirs = listdir(libPath)
-				print(libPath)
-				print(dirs)
 
 				tempPath = None
+				#find the directory that contains pip and ends with .dist-info
 				for directory in dirs:
-					if ('pip' in directory and
+					#print(directory)
+					if (directory.startswith('pip') and
 						directory.endswith('.dist-info')):
-						tempPath = libPath + directory
+						tempPath = libPath + "/" + directory
+						break
 
-				print(tempPath)
-				#rmdir Li
+				if(tempPath != None):
+					#remove the old directory
+					print('removing old: ' + tempPath)
+					cmd.run('rmdir /S /Q "' + tempPath + '"')
+				
+				#install pip
+				print(cmd.PythonHomePath() + '/get-pip.py')
+
+				print('Installing pip...')
+				cmd.runLogOutput('InstallPip.bat')
+
+				#update our stored location
+				configs['pipDirectoryPath'] = correctPipPath
+				configFile.seek(0)
+				configFile.write(json.dumps(configs))
+				configFile.truncate()
+
+				#done
+				print('upystartup::updated pip.exe location in <' + configPath + '>')
+
+			else:
+				print('upystartup::pip location is up to date.')
+
 	except:
-		e = sys.exc_info()[0]
+		e = sys.exc_info()
 		ue.log('upyconfig.json error: ' + str(e))
 
 #add any startup action you wish to perform in python
