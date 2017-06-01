@@ -136,7 +136,7 @@ public class UnrealEnginePython : ModuleRules
             {
                 PythonHome = ThirdPartyPythonHome;
 
-                System.Console.WriteLine("Using Python at: " + PythonHome);
+                System.Console.WriteLine("Using Embedded Python at: " + PythonHome);
                 PublicIncludePaths.Add(PythonHome);
                 string libPath = Path.Combine(PythonHome, "Lib", string.Format("{0}.lib", PythonType.ToLower()));
 
