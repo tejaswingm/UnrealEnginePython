@@ -158,7 +158,6 @@ public class UnrealEnginePython : ModuleRules
                 PublicLibraryPaths.Add(Path.GetDirectoryName(libPath));
                 PublicAdditionalLibraries.Add(libPath);
             }
-
         }
 
         //other platforms
