@@ -7,7 +7,7 @@ public class PythonConsole : ModuleRules
 {
 
 
-    public PythonConsole(TargetInfo Target)
+    public PythonConsole(ReadOnlyTargetRules Target) : base(Target)
 	{
         PrivateIncludePaths.AddRange(
             new string[] {
