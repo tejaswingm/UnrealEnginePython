@@ -52,7 +52,7 @@ public class UnrealEnginePython : ModuleRules
 
 
 
-    public UnrealEnginePython(TargetInfo Target)
+    public UnrealEnginePython(ReadOnlyTargetRules Target) : base(Target)
     {
 
 

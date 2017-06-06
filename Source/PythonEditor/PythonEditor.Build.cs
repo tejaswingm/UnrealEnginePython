@@ -4,7 +4,7 @@ namespace UnrealBuildTool.Rules
 {
 	public class PythonEditor : ModuleRules
 	{
-		public PythonEditor(TargetInfo Target)
+		public PythonEditor(ReadOnlyTargetRules Target) : base(Target)
 		{
 			PrivateIncludePaths.AddRange(
 				new string[] {
