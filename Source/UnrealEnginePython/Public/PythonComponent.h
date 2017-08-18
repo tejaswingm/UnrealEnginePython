@@ -21,6 +21,8 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	virtual void InitializeComponent() override;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Python")
 	FString PythonModule;
 
@@ -44,6 +46,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Python")
 	FString CallPythonComponentMethodString(FString method_name, FString args);
+
+	UFUNCTION(BlueprintCallable, Category = "Python")
+	TMap<FString, FString> CallPythonComponentMethodMap(FString method_name, FString args);
 
 	UFUNCTION(BlueprintCallable, Category = "Python")
 	void CallPythonComponentMethodStringArray(FString method_name, FString args, TArray<FString> &output_strings);

@@ -3,40 +3,52 @@
 
 
 #include "UEPyEngine.h"
-#include "UEPyObject.h"
-#include "UEPyActor.h"
-#include "UEPyTransform.h"
-#include "UEPyPlayer.h"
-#include "UEPyInput.h"
-#include "UEPyWorld.h"
-#include "UEPyNavigation.h"
-#include "UEPySpline.h"
-#include "UEPyMovements.h"
-#include "UEPyAttaching.h"
-#include "UEPySkeletal.h"
-#include "UEPyTraceAndSweep.h"
 #include "UEPyTimer.h"
 #include "UEPyTicker.h"
-#include "UEPyPhysics.h"
-#include "UEPyAudio.h"
-#include "UEPySequencer.h"
-#include "UEPySlate.h"
-#include "UEPyPackage.h"
+
+#include "UObject/UEPyObject.h"
+#include "UObject/UEPyActor.h"
+#include "UObject/UEPyTransform.h"
+#include "UObject/UEPyPlayer.h"
+#include "UObject/UEPyInput.h"
+#include "UObject/UEPyWorld.h"
+#include "UObject/UEPyNavigation.h"
+#include "UObject/UEPySpline.h"
+#include "UObject/UEPyMovements.h"
+#include "UObject/UEPyAttaching.h"
+#include "UObject/UEPySkeletal.h"
+#include "UObject/UEPyStaticMesh.h"
+#include "UObject/UEPyTraceAndSweep.h"
+#include "UObject/UEPyPhysics.h"
+#include "UObject/UEPyAudio.h"
+#include "UObject/UEPySequencer.h"
+#include "UObject/UEPyViewport.h"
+#include "UObject/UEPyWidget.h"
+#include "UObject/UEPyWidgetComponent.h"
+#include "UObject/UEPyPackage.h"
+#include "UObject/UEPyTexture.h"
+#include "UObject/UEPyMaterial.h"
+#include "UObject/UEPyPawn.h"
+#include "UObject/UEPyController.h"
+#include "UObject/UEPyHUD.h"
+#include "UObject/UEPyAnimSequence.h"
+
+
 #include "UEPyAssetUserData.h"
-#include "UEPyTexture.h"
-#include "UEPyMaterial.h"
-#include "UEPyPawn.h"
-#include "UEPyController.h"
 #include "UEPyLambda.h"
+
 #if WITH_EDITOR
 #include "UEPyEditor.h"
-#include "UEPyEdGraph.h"
+#include "Blueprint/UEPyEdGraph.h"
+#include "Fbx/UEPyFbx.h"
 #endif
 
 
 #include "PythonDelegate.h"
 #include "PythonFunction.h"
 #include "PythonClass.h"
+
+#include "Slate/UEPySlate.h"
 
 
 DEFINE_LOG_CATEGORY(LogPython);
@@ -101,7 +113,7 @@ static PyObject *py_unreal_engine_sandbox_exec(PyObject * self, PyObject * args)
 		return NULL;
 	}
 	FUnrealEnginePythonModule &PythonModule = FModuleManager::GetModuleChecked<FUnrealEnginePythonModule>("UnrealEnginePython");
-	PythonModule.RunFileSandboxed(filename);
+	PythonModule.RunFileSandboxed(filename, nullptr, nullptr);
 	Py_INCREF(Py_None);
 	return Py_None;
 }
@@ -138,20 +150,65 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "find_object", py_unreal_engine_find_object, METH_VARARGS, "" },
 	{ "load_object", py_unreal_engine_load_object, METH_VARARGS, "" },
 
+	{ "load_package", py_unreal_engine_load_package, METH_VARARGS, "" },
+
 	{ "get_forward_vector", py_unreal_engine_get_forward_vector, METH_VARARGS, "" },
 	{ "get_up_vector", py_unreal_engine_get_up_vector, METH_VARARGS, "" },
 	{ "get_right_vector", py_unreal_engine_get_right_vector, METH_VARARGS, "" },
 
 	{ "get_content_dir", py_unreal_engine_get_content_dir, METH_VARARGS, "" },
 	{ "convert_relative_path_to_full", py_unreal_engine_convert_relative_path_to_full, METH_VARARGS, "" },
+
+	{ "get_path", py_unreal_engine_get_path, METH_VARARGS, "" },
+	{ "get_base_filename", py_unreal_engine_get_base_filename, METH_VARARGS, "" },
+	{ "object_path_to_package_name", py_unreal_engine_object_path_to_package_name, METH_VARARGS, "" },
+
+	{ "compress_image_array", py_unreal_engine_compress_image_array, METH_VARARGS, "" },
+	{ "create_checkerboard_texture", py_unreal_engine_create_checkerboard_texture, METH_VARARGS, "" },
+	{ "create_transient_texture", py_unreal_engine_create_transient_texture, METH_VARARGS, "" },
+	{ "create_transient_texture_render_target2d", py_unreal_engine_create_transient_texture_render_target2d, METH_VARARGS, "" },
 #if WITH_EDITOR
+	{ "create_texture", py_unreal_engine_create_texture, METH_VARARGS, "" },
+#endif
+
+	{ "create_world", py_unreal_engine_create_world, METH_VARARGS, "" },
+
+	// package
+	{ "create_package", (PyCFunction)py_unreal_engine_create_package, METH_VARARGS, "" },
+	{ "get_or_create_package", (PyCFunction)py_unreal_engine_get_or_create_package, METH_VARARGS, "" },
+	{ "get_transient_package", (PyCFunction)py_unreal_engine_get_transient_package, METH_VARARGS, "" },
+
+	// slate
+
+	{ "register_nomad_tab_spawner", py_unreal_engine_register_nomad_tab_spawner, METH_VARARGS, "" },
+	{ "unregister_nomad_tab_spawner", py_unreal_engine_unregister_nomad_tab_spawner, METH_VARARGS, "" },
+	{ "invoke_tab", py_unreal_engine_invoke_tab, METH_VARARGS, "" },
+#if WITH_EDITOR
+	{ "get_editor_window", py_unreal_engine_get_editor_window, METH_VARARGS, "" },
+	{ "add_menu_extension", py_unreal_engine_add_menu_extension, METH_VARARGS, "" },
+	{ "add_menu_bar_extension", py_unreal_engine_add_menu_bar_extension, METH_VARARGS, "" },
+	{ "add_tool_bar_extension", py_unreal_engine_add_tool_bar_extension, METH_VARARGS, "" },
+
+	{ "add_asset_view_context_menu_extension", py_unreal_engine_add_asset_view_context_menu_extension, METH_VARARGS, "" },
+
+#pragma warning(suppress: 4191)
+	{ "create_detail_view",  (PyCFunction)py_unreal_engine_create_detail_view, METH_VARARGS | METH_KEYWORDS, "" },
+#pragma warning(suppress: 4191)
+	{ "create_property_view",  (PyCFunction)py_unreal_engine_create_property_view, METH_VARARGS | METH_KEYWORDS, "" },
+
+	{ "open_editor_for_asset", py_unreal_engine_open_editor_for_asset, METH_VARARGS, "" },
+	{ "close_editor_for_asset", py_unreal_engine_close_editor_for_asset, METH_VARARGS, "" },
+	{ "close_all_asset_editors", py_unreal_engine_close_all_asset_editors, METH_VARARGS, "" },
 	{ "allow_actor_script_execution_in_editor", py_unreal_engine_allow_actor_script_execution_in_editor , METH_VARARGS, "" },
 	{ "get_editor_world", py_unreal_engine_get_editor_world, METH_VARARGS, "" },
+	{ "console_exec", py_unreal_engine_console_exec, METH_VARARGS, "" },
 	{ "editor_get_selected_actors", py_unreal_engine_editor_get_selected_actors, METH_VARARGS, "" },
 	{ "editor_select_actor", py_unreal_engine_editor_select_actor, METH_VARARGS, "" },
 	{ "editor_deselect_actors", py_unreal_engine_editor_deselect_actors, METH_VARARGS, "" },
 	{ "import_asset", py_unreal_engine_import_asset, METH_VARARGS, "" },
 	{ "get_asset", py_unreal_engine_get_asset, METH_VARARGS, "" },
+	{ "find_asset", py_unreal_engine_find_asset, METH_VARARGS, "" },
+	{ "delete_object", py_unreal_engine_delete_object, METH_VARARGS, "" },
 	{ "get_assets", py_unreal_engine_get_assets, METH_VARARGS, "" },
 	{ "get_selected_assets", py_unreal_engine_get_selected_assets, METH_VARARGS, "" },
 	{ "get_assets_by_class", py_unreal_engine_get_assets_by_class, METH_VARARGS, "" },
@@ -194,21 +251,12 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "add_component_to_blueprint", py_unreal_engine_add_component_to_blueprint, METH_VARARGS, "" },
 	{ "create_material_instance", py_unreal_engine_create_material_instance, METH_VARARGS, "" },
 	{ "message_dialog_open", py_unreal_engine_message_dialog_open, METH_VARARGS, "" },
+	{ "create_modal_save_asset_dialog", py_unreal_engine_create_modal_save_asset_dialog, METH_VARARGS, "" },
 	{ "set_fbx_import_option", py_unreal_engine_set_fbx_import_option, METH_VARARGS, "" },
 
 	{ "create_new_graph", py_unreal_engine_create_new_graph, METH_VARARGS, "" },
 
 	{ "editor_play", py_unreal_engine_editor_play, METH_VARARGS, "" },
-
-	{ "add_menu_extension", py_unreal_engine_add_menu_extension, METH_VARARGS, "" },
-	{ "add_nomad_tab", py_unreal_engine_add_nomad_tab, METH_VARARGS, "" },
-
-	{ "slate_text_block", py_unreal_engine_slate_text_block, METH_VARARGS, "" },
-	{ "slate_box", py_unreal_engine_slate_box, METH_VARARGS, "" },
-	{ "slate_window", py_unreal_engine_slate_window, METH_VARARGS, "" },
-	{ "slate_button", py_unreal_engine_slate_button, METH_VARARGS, "" },
-
-	{ "get_editor_window", py_unreal_engine_get_editor_window, METH_VARARGS, "" },
 
 	{ "add_level_to_world", py_unreal_engine_add_level_to_world, METH_VARARGS, "" },
 	{ "move_selected_actors_to_level", py_unreal_engine_move_selected_actors_to_level, METH_VARARGS, "" },
@@ -228,7 +276,13 @@ static PyMethodDef unreal_engine_methods[] = {
 
 	{ "editor_undo", py_unreal_engine_editor_undo, METH_VARARGS, "" },
 	{ "editor_redo", py_unreal_engine_editor_redo, METH_VARARGS, "" },
+
+	{ "editor_tick", py_unreal_engine_editor_tick, METH_VARARGS, "" },
 #endif
+
+	{ "engine_tick", py_unreal_engine_engine_tick, METH_VARARGS, "" },
+	{ "slate_tick", py_unreal_engine_slate_tick, METH_VARARGS, "" },
+	{ "get_delta_time", py_unreal_engine_get_delta_time, METH_VARARGS, "" },
 
 	{ "new_object", py_unreal_engine_new_object, METH_VARARGS, "" },
 
@@ -259,10 +313,24 @@ static PyMethodDef unreal_engine_methods[] = {
 
 	{ "get_viewport_screenshot", py_unreal_engine_get_viewport_screenshot, METH_VARARGS, "" },
 	{ "get_viewport_size", py_unreal_engine_get_viewport_size, METH_VARARGS, "" },
+	{ "get_resolution", py_unreal_engine_get_resolution, METH_VARARGS, "" },
+	{ "get_game_viewport_size", py_unreal_engine_get_game_viewport_size, METH_VARARGS, "" },
 
+	{ "get_game_viewport_client", py_unreal_engine_get_game_viewport_client, METH_VARARGS, "" },
+#pragma warning(suppress: 4191)
+	{ "open_color_picker", (PyCFunction)py_unreal_engine_open_color_picker, METH_VARARGS | METH_KEYWORDS, "" },
+	{ "destroy_color_picker", py_unreal_engine_destroy_color_picker, METH_VARARGS, "" },
+	{ "play_sound", py_unreal_engine_play_sound, METH_VARARGS, "" },
 #if WITH_EDITOR
+	{ "editor_play_in_viewport", py_unreal_engine_editor_play_in_viewport, METH_VARARGS, "" },
+	{ "get_editor_pie_game_viewport_client", py_unreal_engine_get_editor_pie_game_viewport_client, METH_VARARGS, "" },
 	{ "editor_get_active_viewport_screenshot", py_unreal_engine_editor_get_active_viewport_screenshot, METH_VARARGS, "" },
 	{ "editor_get_pie_viewport_screenshot", py_unreal_engine_editor_get_pie_viewport_screenshot, METH_VARARGS, "" },
+
+	{ "editor_set_view_mode", py_unreal_engine_editor_set_view_mode, METH_VARARGS, "" },
+	{ "editor_set_camera_speed", py_unreal_engine_editor_set_camera_speed, METH_VARARGS, "" },
+	{ "editor_set_view_location", py_unreal_engine_editor_set_view_location, METH_VARARGS, "" },
+	{ "editor_set_view_rotation", py_unreal_engine_editor_set_view_rotation, METH_VARARGS, "" },
 
 	{ "editor_get_active_viewport_size", py_unreal_engine_editor_get_active_viewport_size, METH_VARARGS, "" },
 	{ "editor_get_pie_viewport_size", py_unreal_engine_editor_get_pie_viewport_size, METH_VARARGS, "" },
@@ -282,6 +350,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_actor_location", (PyCFunction)py_ue_get_actor_location, METH_VARARGS, "" },
 	{ "get_actor_rotation", (PyCFunction)py_ue_get_actor_rotation, METH_VARARGS, "" },
 	{ "get_actor_scale", (PyCFunction)py_ue_get_actor_scale, METH_VARARGS, "" },
+	{ "get_actor_transform", (PyCFunction)py_ue_get_actor_transform, METH_VARARGS, "" },
 
 	{ "get_actor_forward", (PyCFunction)py_ue_get_actor_forward, METH_VARARGS, "" },
 	{ "get_actor_right", (PyCFunction)py_ue_get_actor_right, METH_VARARGS, "" },
@@ -291,6 +360,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "set_actor_location", (PyCFunction)py_ue_set_actor_location, METH_VARARGS, "" },
 	{ "set_actor_rotation", (PyCFunction)py_ue_set_actor_rotation, METH_VARARGS, "" },
 	{ "set_actor_scale", (PyCFunction)py_ue_set_actor_scale, METH_VARARGS, "" },
+	{ "set_actor_transform", (PyCFunction)py_ue_set_actor_transform, METH_VARARGS, "" },
 
 	{ "add_actor_world_offset", (PyCFunction)py_ue_add_actor_world_offset, METH_VARARGS, "" },
 	{ "add_actor_local_offset", (PyCFunction)py_ue_add_actor_local_offset, METH_VARARGS, "" },
@@ -301,16 +371,20 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_world_location", (PyCFunction)py_ue_get_world_location, METH_VARARGS, "" },
 	{ "get_world_rotation", (PyCFunction)py_ue_get_world_rotation, METH_VARARGS, "" },
 	{ "get_world_scale", (PyCFunction)py_ue_get_world_scale, METH_VARARGS, "" },
+	{ "get_world_transform", (PyCFunction)py_ue_get_world_transform, METH_VARARGS, "" },
 	{ "get_relative_location", (PyCFunction)py_ue_get_relative_location, METH_VARARGS, "" },
 	{ "get_relative_rotation", (PyCFunction)py_ue_get_relative_rotation, METH_VARARGS, "" },
 	{ "get_relative_scale", (PyCFunction)py_ue_get_relative_scale, METH_VARARGS, "" },
+	{ "get_relative_transform", (PyCFunction)py_ue_get_relative_transform, METH_VARARGS, "" },
 
 	{ "set_world_location", (PyCFunction)py_ue_set_world_location, METH_VARARGS, "" },
 	{ "set_world_rotation", (PyCFunction)py_ue_set_world_rotation, METH_VARARGS, "" },
 	{ "set_world_scale", (PyCFunction)py_ue_set_world_scale, METH_VARARGS, "" },
+	{ "set_world_transform", (PyCFunction)py_ue_set_world_transform, METH_VARARGS, "" },
 	{ "set_relative_location", (PyCFunction)py_ue_set_relative_location, METH_VARARGS, "" },
 	{ "set_relative_rotation", (PyCFunction)py_ue_set_relative_rotation, METH_VARARGS, "" },
 	{ "set_relative_scale", (PyCFunction)py_ue_set_relative_scale, METH_VARARGS, "" },
+	{ "set_relative_transform", (PyCFunction)py_ue_set_relative_transform, METH_VARARGS, "" },
 
 	{ "get_forward_vector", (PyCFunction)py_ue_get_forward_vector, METH_VARARGS, "" },
 	{ "get_up_vector", (PyCFunction)py_ue_get_up_vector, METH_VARARGS, "" },
@@ -321,7 +395,10 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_property", (PyCFunction)py_ue_get_property, METH_VARARGS, "" },
 	{ "set_property", (PyCFunction)py_ue_set_property, METH_VARARGS, "" },
 	{ "properties", (PyCFunction)py_ue_properties, METH_VARARGS, "" },
-
+	{ "get_property_class", (PyCFunction)py_ue_get_property_class, METH_VARARGS, "" },
+	{ "has_property", (PyCFunction)py_ue_has_property, METH_VARARGS, "" },
+	{ "get_uproperty", (PyCFunction)py_ue_get_uproperty, METH_VARARGS, "" },
+	{ "get_property_struct", (PyCFunction)py_ue_get_property_struct, METH_VARARGS, "" },
 
 	{ "functions", (PyCFunction)py_ue_functions, METH_VARARGS, "" },
 
@@ -332,6 +409,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_owner", (PyCFunction)py_ue_get_owner, METH_VARARGS, "" },
 
 	{ "get_outer", (PyCFunction)py_ue_get_outer, METH_VARARGS, "" },
+	{ "set_outer", (PyCFunction)py_ue_set_outer, METH_VARARGS, "" },
 	{ "get_outermost", (PyCFunction)py_ue_get_outermost, METH_VARARGS, "" },
 
 	{ "get_super_class", (PyCFunction)py_ue_get_super_class, METH_VARARGS, "" },
@@ -340,6 +418,10 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_name", (PyCFunction)py_ue_get_name, METH_VARARGS, "" },
 	{ "get_path_name", (PyCFunction)py_ue_get_path_name, METH_VARARGS, "" },
 	{ "get_full_name", (PyCFunction)py_ue_get_full_name, METH_VARARGS, "" },
+
+#if ENGINE_MINOR_VERSION >= 15
+	{ "can_modify", (PyCFunction)py_ue_can_modify, METH_VARARGS, "" },
+#endif
 
 	{ "set_name", (PyCFunction)py_ue_set_name, METH_VARARGS, "" },
 
@@ -356,8 +438,11 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_actor_label", (PyCFunction)py_ue_get_actor_label, METH_VARARGS, "" },
 	{ "set_actor_label", (PyCFunction)py_ue_set_actor_label, METH_VARARGS, "" },
 
+	{ "get_editor_world_counterpart_actor", (PyCFunction)py_ue_get_editor_world_counterpart_actor, METH_VARARGS, "" },
+
 	{ "find_actor_by_label", (PyCFunction)py_ue_find_actor_by_label, METH_VARARGS, "" },
 	{ "save_package", (PyCFunction)py_ue_save_package, METH_VARARGS, "" },
+	{ "duplicate", (PyCFunction)py_ue_duplicate, METH_VARARGS, "" },
 	{ "asset_can_reimport", (PyCFunction)py_ue_asset_can_reimport, METH_VARARGS, "" },
 	{ "asset_reimport", (PyCFunction)py_ue_asset_reimport, METH_VARARGS, "" },
 
@@ -374,14 +459,19 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "graph_get_good_place_for_new_node", (PyCFunction)py_ue_graph_get_good_place_for_new_node, METH_VARARGS, "" },
 
 	{ "node_pins", (PyCFunction)py_ue_node_pins, METH_VARARGS, "" },
+	{ "node_get_title", (PyCFunction)py_ue_node_get_title, METH_VARARGS, "" },
 	{ "node_find_pin", (PyCFunction)py_ue_node_find_pin, METH_VARARGS, "" },
 	{ "node_create_pin", (PyCFunction)py_ue_node_create_pin, METH_VARARGS, "" },
+
+	{ "node_allocate_default_pins", (PyCFunction)py_ue_node_allocate_default_pins, METH_VARARGS, "" },
+	{ "node_reconstruct", (PyCFunction)py_ue_node_reconstruct, METH_VARARGS, "" },
 
 	{ "get_material_graph", (PyCFunction)py_ue_get_material_graph, METH_VARARGS, "" },
 #endif
 
 	{ "is_rooted", (PyCFunction)py_ue_is_rooted, METH_VARARGS, "" },
 	{ "add_to_root", (PyCFunction)py_ue_add_to_root, METH_VARARGS, "" },
+	{ "auto_root", (PyCFunction)py_ue_auto_root, METH_VARARGS, "" },
 	{ "remove_from_root", (PyCFunction)py_ue_remove_from_root, METH_VARARGS, "" },
 
 	{ "find_function", (PyCFunction)py_ue_find_function, METH_VARARGS, "" },
@@ -401,9 +491,28 @@ static PyMethodDef ue_PyUObject_methods[] = {
 #if WITH_EDITOR
 	// AssetUserData
 	{ "asset_import_data", (PyCFunction)py_ue_asset_import_data, METH_VARARGS, "" },
+#endif
 
 	// AnimSequence
-	{ "anim_sequence_get_skeleton", (PyCFunction)py_ue_anim_sequence_get_skeleton, METH_VARARGS, "" },
+	{ "anim_get_skeleton", (PyCFunction)py_ue_anim_get_skeleton, METH_VARARGS, "" },
+	{ "anim_set_skeleton", (PyCFunction)py_ue_anim_set_skeleton, METH_VARARGS, "" },
+	{ "get_blend_parameter", (PyCFunction)py_ue_get_blend_parameter, METH_VARARGS, "" },
+	{ "set_blend_parameter", (PyCFunction)py_ue_set_blend_parameter, METH_VARARGS, "" },
+
+#if WITH_EDITOR
+#if ENGINE_MINOR_VERSION > 13
+	{ "get_raw_animation_data", (PyCFunction)py_ue_anim_sequence_get_raw_animation_data, METH_VARARGS, "" },
+	{ "get_raw_animation_track", (PyCFunction)py_ue_anim_sequence_get_raw_animation_track, METH_VARARGS, "" },
+	{ "add_new_raw_track", (PyCFunction)py_ue_anim_sequence_add_new_raw_track, METH_VARARGS, "" },
+#endif
+	{ "add_anim_composite_section", (PyCFunction)py_ue_add_anim_composite_section, METH_VARARGS, "" },
+#endif
+
+
+	// StaticMesh
+#if WITH_EDITOR
+	{ "static_mesh_build", (PyCFunction)py_ue_static_mesh_build, METH_VARARGS, "" },
+	{ "static_mesh_create_body_setup", (PyCFunction)py_ue_static_mesh_create_body_setup, METH_VARARGS, "" },
 #endif
 
 	// Input
@@ -424,6 +533,13 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "bind_key", (PyCFunction)py_ue_bind_key, METH_VARARGS, "" },
 	{ "bind_pressed_key", (PyCFunction)py_ue_bind_pressed_key, METH_VARARGS, "" },
 	{ "bind_released_key", (PyCFunction)py_ue_bind_released_key, METH_VARARGS, "" },
+
+	// HUD
+	{ "hud_draw_2d_line", (PyCFunction)py_ue_hud_draw_2d_line, METH_VARARGS, "" },
+	{ "hud_draw_line", (PyCFunction)py_ue_hud_draw_line, METH_VARARGS, "" },
+	{ "hud_draw_texture", (PyCFunction)py_ue_hud_draw_texture, METH_VARARGS, "" },
+	{ "hud_draw_rect", (PyCFunction)py_ue_hud_draw_rect, METH_VARARGS, "" },
+	{ "hud_draw_text", (PyCFunction)py_ue_hud_draw_text, METH_VARARGS, "" },
 
 
 	// Movements
@@ -453,10 +569,15 @@ static PyMethodDef ue_PyUObject_methods[] = {
 
 	{ "component_is_registered", (PyCFunction)py_ue_component_is_registered, METH_VARARGS, "" },
 	{ "register_component", (PyCFunction)py_ue_register_component, METH_VARARGS, "" },
+	{ "unregister_component", (PyCFunction)py_ue_unregister_component, METH_VARARGS, "" },
+	{ "destroy_component", (PyCFunction)py_ue_destroy_component, METH_VARARGS, "" },
 
-
+	{ "actor_destroy_component", (PyCFunction)py_ue_actor_destroy_component, METH_VARARGS, "" },
+	{ "destroy_actor_component", (PyCFunction)py_ue_actor_destroy_component, METH_VARARGS, "" },
 
 	{ "actor_create_default_subobject", (PyCFunction)py_ue_actor_create_default_subobject, METH_VARARGS, "" },
+
+	{ "actor_begin_play", (PyCFunction)py_ue_actor_begin_play, METH_VARARGS, "" },
 
 	{ "broadcast", (PyCFunction)py_ue_broadcast, METH_VARARGS, "" },
 
@@ -470,12 +591,15 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "quit_game", (PyCFunction)py_ue_quit_game, METH_VARARGS, "" },
 	{ "play", (PyCFunction)py_ue_play, METH_VARARGS, "" },
 
+	{ "world_exec", (PyCFunction)py_ue_world_exec, METH_VARARGS, "" },
+
 	{ "simple_move_to_location", (PyCFunction)py_ue_simple_move_to_location, METH_VARARGS, "" },
 
 	{ "actor_has_component_of_type", (PyCFunction)py_ue_actor_has_component_of_type, METH_VARARGS, "" },
 
 	{ "actor_destroy", (PyCFunction)py_ue_actor_destroy, METH_VARARGS, "" },
-	{ "actor_spawn", (PyCFunction)py_ue_actor_spawn, METH_VARARGS, "" },
+#pragma warning(suppress: 4191)
+	{ "actor_spawn", (PyCFunction)py_ue_actor_spawn, METH_VARARGS | METH_KEYWORDS, "" },
 	{ "actor_has_tag", (PyCFunction)py_ue_actor_has_tag, METH_VARARGS, "" },
 	{ "get_actor_bounds", (PyCFunction)py_ue_get_actor_bounds, METH_VARARGS, "" },
 
@@ -500,6 +624,8 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_actor_components_by_type", (PyCFunction)py_ue_get_actor_components_by_type, METH_VARARGS, "" },
 	{ "get_components_by_type", (PyCFunction)py_ue_get_actor_components_by_type, METH_VARARGS, "" },
 
+	{ "add_python_component", (PyCFunction)py_ue_add_python_component, METH_VARARGS, "" },
+
 	{ "set_simulate_physics", (PyCFunction)py_ue_set_simulate_physics, METH_VARARGS, "" },
 	{ "add_impulse", (PyCFunction)py_ue_add_impulse, METH_VARARGS, "" },
 	{ "add_angular_impulse", (PyCFunction)py_ue_add_angular_impulse, METH_VARARGS, "" },
@@ -509,26 +635,49 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_physics_linear_velocity", (PyCFunction)py_ue_get_physics_linear_velocity, METH_VARARGS, "" },
 	{ "set_physics_angular_velocity", (PyCFunction)py_ue_set_physics_angular_velocity, METH_VARARGS, "" },
 	{ "get_physics_angular_velocity", (PyCFunction)py_ue_get_physics_angular_velocity, METH_VARARGS, "" },
+	{ "find_object", (PyCFunction)py_ue_find_object, METH_VARARGS, "" },
 	{ "get_world", (PyCFunction)py_ue_get_world, METH_VARARGS, "" },
 	{ "has_world", (PyCFunction)py_ue_has_world, METH_VARARGS, "" },
+
+	{ "get_game_viewport", (PyCFunction)py_ue_get_game_viewport, METH_VARARGS, "" },
 
 	{ "get_world_location_at_distance_along_spline", (PyCFunction)py_ue_get_world_location_at_distance_along_spline, METH_VARARGS, "" },
 	{ "get_spline_length", (PyCFunction)py_ue_get_spline_length, METH_VARARGS, "" },
 
+	// Widget
+	{ "take_widget", (PyCFunction)py_ue_take_widget, METH_VARARGS, "" },
+	{ "create_widget", (PyCFunction)py_ue_create_widget, METH_VARARGS, "" },
+
+	// WidgetComponent
+	{ "set_slate_widget", (PyCFunction)py_ue_set_slate_widget, METH_VARARGS, "" },
+
 	{ "get_actor_velocity", (PyCFunction)py_ue_get_actor_velocity, METH_VARARGS, "" },
 
 	{ "play_sound_at_location", (PyCFunction)py_ue_play_sound_at_location, METH_VARARGS, "" },
+	{ "queue_audio", (PyCFunction)py_ue_queue_audio, METH_VARARGS, "" },
+	{ "reset_audio", (PyCFunction)py_ue_reset_audio, METH_VARARGS, "" },
+	{ "get_available_audio_byte_count", (PyCFunction)py_ue_get_available_audio_byte_count, METH_VARARGS, "" },
+	{ "sound_get_data", (PyCFunction)py_ue_sound_get_data, METH_VARARGS, "" },
+	{ "sound_set_data", (PyCFunction)py_ue_sound_set_data, METH_VARARGS, "" },
 
 	{ "world_tick", (PyCFunction)py_ue_world_tick, METH_VARARGS, "" },
 
 	{ "conditional_begin_destroy", (PyCFunction)py_ue_conditional_begin_destroy, METH_VARARGS, "" },
 
+
+	// Player
+
 	{ "create_player", (PyCFunction)py_ue_create_player, METH_VARARGS, "" },
 	{ "get_num_players", (PyCFunction)py_ue_get_num_players, METH_VARARGS, "" },
 	{ "get_num_spectators", (PyCFunction)py_ue_get_num_spectators, METH_VARARGS, "" },
 	{ "get_player_controller", (PyCFunction)py_ue_get_player_controller, METH_VARARGS, "" },
+	{ "get_player_hud", (PyCFunction)py_ue_get_player_hud, METH_VARARGS, "" },
+	{ "set_player_hud", (PyCFunction)py_ue_set_player_hud, METH_VARARGS, "" },
+	{ "get_player_camera_manager", (PyCFunction)py_ue_get_player_camera_manager, METH_VARARGS, "" },
+	{ "get_player_pawn", (PyCFunction)py_ue_get_player_pawn, METH_VARARGS, "" },
 
 	{ "get_overlapping_actors", (PyCFunction)py_ue_get_overlapping_actors, METH_VARARGS, "" },
+	{ "actor_set_level_sequence", (PyCFunction)py_ue_actor_set_level_sequence, METH_VARARGS, "" },
 
 	// Pawn
 	{ "get_controller", (PyCFunction)py_ue_pawn_get_controller, METH_VARARGS, "" },
@@ -536,6 +685,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	// Controller
 	{ "posses", (PyCFunction)py_ue_controller_posses, METH_VARARGS, "" },
 	{ "unposses", (PyCFunction)py_ue_controller_unposses, METH_VARARGS, "" },
+	{ "get_hud", (PyCFunction)py_ue_controller_get_hud, METH_VARARGS, "" },
 
 
 	// Attaching
@@ -552,6 +702,32 @@ static PyMethodDef ue_PyUObject_methods[] = {
 
 	// Skeletal
 	{ "get_anim_instance", (PyCFunction)py_ue_get_anim_instance, METH_VARARGS, "" },
+	{ "set_skeletal_mesh", (PyCFunction)py_ue_set_skeletal_mesh, METH_VARARGS, "" },
+
+	{ "skeleton_get_parent_index", (PyCFunction)py_ue_skeleton_get_parent_index, METH_VARARGS, "" },
+	{ "skeleton_bones_get_num", (PyCFunction)py_ue_skeleton_bones_get_num, METH_VARARGS, "" },
+	{ "skeleton_get_bone_name", (PyCFunction)py_ue_skeleton_get_bone_name, METH_VARARGS, "" },
+	{ "skeleton_find_bone_index", (PyCFunction)py_ue_skeleton_find_bone_index, METH_VARARGS, "" },
+	{ "skeleton_get_ref_bone_pose", (PyCFunction)py_ue_skeleton_get_ref_bone_pose, METH_VARARGS, "" },
+
+#if ENGINE_MINOR_VERSION > 13
+	{ "skeleton_add_bone", (PyCFunction)py_ue_skeleton_add_bone, METH_VARARGS, "" },
+#endif
+
+#if ENGINE_MINOR_VERSION > 12
+	{ "skeletal_mesh_set_soft_vertices", (PyCFunction)py_ue_skeletal_mesh_set_soft_vertices, METH_VARARGS, "" },
+	{ "skeletal_mesh_get_soft_vertices", (PyCFunction)py_ue_skeletal_mesh_get_soft_vertices, METH_VARARGS, "" },
+#endif
+	{ "skeletal_mesh_set_skeleton", (PyCFunction)py_ue_skeletal_mesh_set_skeleton, METH_VARARGS, "" },
+
+#if ENGINE_MINOR_VERSION > 12
+	{ "skeletal_mesh_get_bone_map", (PyCFunction)py_ue_skeletal_mesh_get_bone_map, METH_VARARGS, "" },
+	{ "skeletal_mesh_set_bone_map", (PyCFunction)py_ue_skeletal_mesh_set_bone_map, METH_VARARGS, "" },
+#endif
+	{ "skeletal_mesh_set_active_bone_indices", (PyCFunction)py_ue_skeletal_mesh_set_active_bone_indices, METH_VARARGS, "" },
+	{ "skeletal_mesh_set_required_bones", (PyCFunction)py_ue_skeletal_mesh_set_required_bones, METH_VARARGS, "" },
+	{ "skeletal_mesh_get_active_bone_indices", (PyCFunction)py_ue_skeletal_mesh_get_active_bone_indices, METH_VARARGS, "" },
+	{ "skeletal_mesh_get_required_bones", (PyCFunction)py_ue_skeletal_mesh_get_required_bones, METH_VARARGS, "" },
 
 	// Timer
 	{ "set_timer", (PyCFunction)py_ue_set_timer, METH_VARARGS, "" },
@@ -559,6 +735,10 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	// Texture
 	{ "texture_get_data", (PyCFunction)py_ue_texture_get_data, METH_VARARGS, "" },
 	{ "texture_set_data", (PyCFunction)py_ue_texture_set_data, METH_VARARGS, "" },
+	{ "texture_get_width", (PyCFunction)py_ue_texture_get_width, METH_VARARGS, "" },
+	{ "texture_get_height", (PyCFunction)py_ue_texture_get_height, METH_VARARGS, "" },
+	{ "render_target_get_data", (PyCFunction)py_ue_render_target_get_data, METH_VARARGS, "" },
+	{ "texture_update_resource", (PyCFunction)py_ue_texture_update_resource, METH_VARARGS, "" },
 
 	// Sequencer
 	{ "sequencer_master_tracks", (PyCFunction)py_ue_sequencer_master_tracks, METH_VARARGS, "" },
@@ -577,6 +757,11 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "sequencer_track_add_section", (PyCFunction)py_ue_sequencer_track_add_section, METH_VARARGS, "" },
 
 	{ "sequencer_section_add_key", (PyCFunction)py_ue_sequencer_section_add_key, METH_VARARGS, "" },
+	{ "sequencer_remove_possessable", (PyCFunction)py_ue_sequencer_remove_possessable, METH_VARARGS, "" },
+	{ "sequencer_remove_spawnable", (PyCFunction)py_ue_sequencer_remove_spawnable, METH_VARARGS, "" },
+	{ "sequencer_remove_camera_cut_track", (PyCFunction)py_ue_sequencer_remove_camera_cut_track, METH_VARARGS, "" },
+	{ "sequencer_remove_master_track", (PyCFunction)py_ue_sequencer_remove_master_track, METH_VARARGS, "" },
+	{ "sequencer_remove_track", (PyCFunction)py_ue_sequencer_remove_track, METH_VARARGS, "" },
 #endif
 	{ "sequencer_sections", (PyCFunction)py_ue_sequencer_sections, METH_VARARGS, "" },
 	{ "sequencer_track_sections", (PyCFunction)py_ue_sequencer_track_sections, METH_VARARGS, "" },
@@ -606,7 +791,10 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "static_mesh_set_shadow_for_lod", (PyCFunction)py_ue_static_mesh_set_shadow_for_lod, METH_VARARGS, "" },
 #endif
 
-
+	// Viewport
+	{ "add_viewport_widget_content", (PyCFunction)py_ue_add_viewport_widget_content, METH_VARARGS, "" },
+	{ "remove_viewport_widget_content", (PyCFunction)py_ue_remove_viewport_widget_content, METH_VARARGS, "" },
+	{ "remove_all_viewport_widgets", (PyCFunction)py_ue_remove_all_viewport_widgets, METH_VARARGS, "" },
 
 #if PY_MAJOR_VERSION >= 3
 	{ "add_function", (PyCFunction)py_ue_add_function, METH_VARARGS, "" },
@@ -639,6 +827,10 @@ void ue_pydelegates_cleanup(ue_PyUObject *self) {
 	self->python_delegates_gc->clear();
 	delete self->python_delegates_gc;
 	self->python_delegates_gc = nullptr;
+
+	if (self->auto_rooted && self->ue_object->IsRooted()) {
+		self->ue_object->RemoveFromRoot();
+	}
 
 	Py_XDECREF(self->py_dict);
 }
@@ -713,7 +905,11 @@ static PyObject *ue_PyUObject_getattro(ue_PyUObject *self, PyObject *attr_name) 
 					FString attr_as_string = FString(UTF8_TO_TCHAR(attr));
 					for (auto item : u_enum->DisplayNameMap) {
 						if (item.Value.ToString() == attr_as_string) {
+#if ENGINE_MINOR_VERSION > 15
+							return PyLong_FromLong(u_enum->GetIndexByName(item.Key));
+#else
 							return PyLong_FromLong(u_enum->FindEnumIndex(item.Key));
+#endif
 						}
 					}
 				}
@@ -721,7 +917,11 @@ static PyObject *ue_PyUObject_getattro(ue_PyUObject *self, PyObject *attr_name) 
 				if (self->ue_object->IsA<UEnum>()) {
 					UEnum *u_enum = (UEnum *)self->ue_object;
 					PyErr_Clear();
+#if ENGINE_MINOR_VERSION > 15
+					return PyLong_FromLong(u_enum->GetIndexByName(FName(UTF8_TO_TCHAR(attr))));
+#else
 					return PyLong_FromLong(u_enum->FindEnumIndex(FName(UTF8_TO_TCHAR(attr))));
+#endif
 				}
 			}
 
@@ -767,8 +967,13 @@ static int ue_PyUObject_setattro(ue_PyUObject *self, PyObject *attr_name, PyObje
 
 static PyObject *ue_PyUObject_str(ue_PyUObject *self)
 {
+#if PY_MAJOR_VERSION >= 3
+	return PyUnicode_FromFormat("<unreal_engine.UObject '%s' (%p) UClass '%s' (refcnt: %d)>",
+		TCHAR_TO_UTF8(*self->ue_object->GetName()), self->ue_object, TCHAR_TO_UTF8(*self->ue_object->GetClass()->GetName()), self->ob_base.ob_refcnt);
+#else
 	return PyUnicode_FromFormat("<unreal_engine.UObject '%s' (%p) UClass '%s'>",
 		TCHAR_TO_UTF8(*self->ue_object->GetName()), self->ue_object, TCHAR_TO_UTF8(*self->ue_object->GetClass()->GetName()));
+#endif
 }
 
 static PyObject *ue_PyUObject_call(ue_PyUObject *self, PyObject *args, PyObject *kw) {
@@ -975,6 +1180,8 @@ static int unreal_engine_py_init(ue_PyUObject *self, PyObject *args, PyObject *k
 		// map the class to the python object
 		self->ue_object = new_class;
 
+		PyObject *py_additional_properties = PyList_New(0);
+
 		PyObject *class_attributes_keys = PyObject_GetIter(class_attributes);
 		for (;;) {
 			PyObject *key = PyIter_Next(class_attributes_keys);
@@ -1015,13 +1222,21 @@ static int unreal_engine_py_init(ue_PyUObject *self, PyObject *args, PyObject *k
 						prop_added = true;
 					}
 				}
+				else if (py_obj->ue_object->IsA<UScriptStruct>()) {
+					if (!py_ue_add_property(self, Py_BuildValue("(OsO)", (PyObject *)ue_get_python_wrapper(UStructProperty::StaticClass()), class_key, value))) {
+						unreal_engine_py_log_error();
+						return -1;
+					}
+					prop_added = true;
+				}
 			}
+
 			// add array property
 			else if (PyList_Check(value)) {
 				if (PyList_Size(value) == 1) {
 					PyObject *first_item = PyList_GetItem(value, 0);
 					if (ue_is_pyuobject(first_item)) {
-						ue_PyUObject *py_obj = (ue_PyUObject *)value;
+						ue_PyUObject *py_obj = (ue_PyUObject *)first_item;
 						if (py_obj->ue_object->IsA<UClass>()) {
 							UClass *p_class = (UClass *)py_obj->ue_object;
 							if (p_class->IsChildOf<UProperty>()) {
@@ -1031,77 +1246,155 @@ static int unreal_engine_py_init(ue_PyUObject *self, PyObject *args, PyObject *k
 								}
 								prop_added = true;
 							}
+
+							else {
+								if (!py_ue_add_property(self, Py_BuildValue("([O]sO)", (PyObject *)ue_get_python_wrapper(UObjectProperty::StaticClass()), class_key, first_item))) {
+									unreal_engine_py_log_error();
+									return -1;
+								}
+								prop_added = true;
+							}
 						}
+						else if (py_obj->ue_object->IsA<UScriptStruct>()) {
+							if (!py_ue_add_property(self, Py_BuildValue("([O]sO)", (PyObject *)ue_get_python_wrapper(UStructProperty::StaticClass()), class_key, first_item))) {
+								unreal_engine_py_log_error();
+								return -1;
+							}
+							prop_added = true;
+						}
+					}
+
+				}
+			}
+#if ENGINE_MINOR_VERSION >= 15
+			else if (PyDict_Check(value)) {
+				if (PyDict_Size(value) == 1) {
+					PyObject *py_key = nullptr;
+					PyObject *py_value = nullptr;
+					Py_ssize_t pos = 0;
+					PyDict_Next(value, &pos, &py_key, &py_value);
+					if (ue_is_pyuobject(py_key) && ue_is_pyuobject(py_value)) {
+						PyObject *first_item = nullptr;
+						PyObject *second_item = nullptr;
+
+						ue_PyUObject *py_obj = (ue_PyUObject *)py_key;
+						if (py_obj->ue_object->IsA<UClass>()) {
+							UClass *p_class = (UClass *)py_obj->ue_object;
+							if (p_class->IsChildOf<UProperty>()) {
+								first_item = py_key;
+							}
+							else {
+								first_item = (PyObject *)ue_get_python_wrapper(UObjectProperty::StaticClass());
+							}
+						}
+						else if (py_obj->ue_object->IsA<UScriptStruct>()) {
+							first_item = (PyObject *)ue_get_python_wrapper(UStructProperty::StaticClass());
+						}
+
+						ue_PyUObject *py_obj2 = (ue_PyUObject *)py_value;
+						if (py_obj2->ue_object->IsA<UClass>()) {
+							UClass *p_class = (UClass *)py_obj2->ue_object;
+							if (p_class->IsChildOf<UProperty>()) {
+								second_item = py_value;
+							}
+							else {
+								second_item = (PyObject *)ue_get_python_wrapper(UObjectProperty::StaticClass());
+							}
+						}
+						else if (py_obj2->ue_object->IsA<UScriptStruct>()) {
+							second_item = (PyObject *)ue_get_python_wrapper(UStructProperty::StaticClass());
+						}
+
+						if (!py_ue_add_property(self, Py_BuildValue("([OO]sOO)", first_item, second_item, class_key, py_key, py_value))) {
+							unreal_engine_py_log_error();
+							return -1;
+						}
+						prop_added = true;
 					}
 				}
 			}
+#endif
 			// function ?
-			else if (PyCallable_Check(value)) {
-				uint32 func_flags = FUNC_Native | FUNC_BlueprintCallable | FUNC_Public;
-				PyObject *is_event = PyObject_GetAttrString(value, (char *)"event");
-				if (is_event && PyObject_IsTrue(is_event)) {
-					func_flags |= FUNC_Event | FUNC_BlueprintEvent;
+			else if (PyCallable_Check(value) && class_key[0] >= 'A' && class_key[0] <= 'Z') {
+				UProperty *u_property = new_class->FindPropertyByName(FName(UTF8_TO_TCHAR(class_key)));
+				if (u_property) {
+					UE_LOG(LogPython, Warning, TEXT("Found UProperty %s"), UTF8_TO_TCHAR(class_key));
+					PyList_Append(py_additional_properties, Py_BuildValue((char*)"(OO)", key, value));
+					prop_added = true;
 				}
-				else if (!is_event)
-					PyErr_Clear();
+				else {
 
-				PyObject *is_multicast = PyObject_GetAttrString(value, (char *)"multicast");
-				if (is_multicast && PyObject_IsTrue(is_multicast)) {
-					func_flags |= FUNC_NetMulticast;
-				}
-				else if (!is_multicast)
-					PyErr_Clear();
-				PyObject *is_server = PyObject_GetAttrString(value, (char *)"server");
-				if (is_server && PyObject_IsTrue(is_server)) {
-					func_flags |= FUNC_NetServer;
-				}
-				else if (!is_server)
-					PyErr_Clear();
-				PyObject *is_client = PyObject_GetAttrString(value, (char *)"client");
-				if (is_client && PyObject_IsTrue(is_client)) {
-					func_flags |= FUNC_NetClient;
-				}
-				else if (!is_client)
-					PyErr_Clear();
-				PyObject *is_reliable = PyObject_GetAttrString(value, (char *)"reliable");
-				if (is_reliable && PyObject_IsTrue(is_reliable)) {
-					func_flags |= FUNC_NetReliable;
-				}
-				else if (!is_reliable)
-					PyErr_Clear();
+					uint32 func_flags = FUNC_Native | FUNC_BlueprintCallable | FUNC_Public;
+					PyObject *is_event = PyObject_GetAttrString(value, (char *)"event");
+					if (is_event && PyObject_IsTrue(is_event)) {
+						func_flags |= FUNC_Event | FUNC_BlueprintEvent;
+					}
+					else if (!is_event)
+						PyErr_Clear();
+
+					PyObject *is_multicast = PyObject_GetAttrString(value, (char *)"multicast");
+					if (is_multicast && PyObject_IsTrue(is_multicast)) {
+						func_flags |= FUNC_NetMulticast;
+					}
+					else if (!is_multicast)
+						PyErr_Clear();
+					PyObject *is_server = PyObject_GetAttrString(value, (char *)"server");
+					if (is_server && PyObject_IsTrue(is_server)) {
+						func_flags |= FUNC_NetServer;
+					}
+					else if (!is_server)
+						PyErr_Clear();
+					PyObject *is_client = PyObject_GetAttrString(value, (char *)"client");
+					if (is_client && PyObject_IsTrue(is_client)) {
+						func_flags |= FUNC_NetClient;
+					}
+					else if (!is_client)
+						PyErr_Clear();
+					PyObject *is_reliable = PyObject_GetAttrString(value, (char *)"reliable");
+					if (is_reliable && PyObject_IsTrue(is_reliable)) {
+						func_flags |= FUNC_NetReliable;
+					}
+					else if (!is_reliable)
+						PyErr_Clear();
 
 
-				PyObject *is_pure = PyObject_GetAttrString(value, (char *)"pure");
-				if (is_pure && PyObject_IsTrue(is_pure)) {
-					func_flags |= FUNC_BlueprintPure;
+					PyObject *is_pure = PyObject_GetAttrString(value, (char *)"pure");
+					if (is_pure && PyObject_IsTrue(is_pure)) {
+						func_flags |= FUNC_BlueprintPure;
+					}
+					else if (!is_pure)
+						PyErr_Clear();
+					PyObject *is_static = PyObject_GetAttrString(value, (char *)"static");
+					if (is_static && PyObject_IsTrue(is_static)) {
+						func_flags |= FUNC_Static;
+					}
+					else if (!is_static)
+						PyErr_Clear();
+					PyObject *override_name = PyObject_GetAttrString(value, (char *)"override");
+					if (override_name && PyUnicodeOrString_Check(override_name)) {
+						class_key = PyUnicode_AsUTF8(override_name);
+					}
+					else if (override_name && PyUnicodeOrString_Check(override_name)) {
+						class_key = PyUnicode_AsUTF8(override_name);
+					}
+					else if (!override_name)
+						PyErr_Clear();
+					if (!unreal_engine_add_function(new_class, class_key, value, func_flags)) {
+						UE_LOG(LogPython, Error, TEXT("unable to add function %s"), UTF8_TO_TCHAR(class_key));
+						return -1;
+					}
+					prop_added = true;
 				}
-				else if (!is_pure)
-					PyErr_Clear();
-				PyObject *is_static = PyObject_GetAttrString(value, (char *)"static");
-				if (is_static && PyObject_IsTrue(is_static)) {
-					func_flags |= FUNC_Static;
-				}
-				else if (!is_static)
-					PyErr_Clear();
-				PyObject *override_name = PyObject_GetAttrString(value, (char *)"override");
-				if (override_name && PyUnicodeOrString_Check(override_name)) {
-					class_key = PyUnicode_AsUTF8(override_name);
-				}
-				else if (override_name && PyUnicodeOrString_Check(override_name)) {
-					class_key = PyUnicode_AsUTF8(override_name);
-				}
-				else if (!override_name)
-					PyErr_Clear();
-				if (!unreal_engine_add_function(new_class, class_key, value, func_flags)) {
-					UE_LOG(LogPython, Error, TEXT("unable to add function %s"), UTF8_TO_TCHAR(class_key));
-					return -1;
-				}
-				prop_added = true;
 			}
 
 			if (!prop_added) {
+				UE_LOG(LogPython, Warning, TEXT("Adding %s as attr"), UTF8_TO_TCHAR(class_key));
 				PyObject_SetAttr((PyObject *)self, key, value);
 			}
+		}
+
+		if (PyList_Size(py_additional_properties) > 0) {
+			PyObject_SetAttrString((PyObject *)self, (char*)"__additional_uproperties__", py_additional_properties);
 		}
 
 		UPythonClass *new_u_py_class = (UPythonClass *)new_class;
@@ -1123,12 +1416,68 @@ static int unreal_engine_py_init(ue_PyUObject *self, PyObject *args, PyObject *k
 
 				// fill __dict__ from class
 				if (u_py_class_casted->py_uobject && u_py_class_casted->py_uobject->py_dict) {
+					PyObject *found_mc = PyDict_GetItemString(u_py_class_casted->py_uobject->py_dict, (char *)"__additional_uproperties__");
+					if (found_mc) {
+						Py_ssize_t items_len = PyList_Size(found_mc);
+						for (Py_ssize_t i = 0;i < items_len;i++) {
+							PyObject *item = PyList_GetItem(found_mc, i);
+							PyObject *mc_key = PyTuple_GetItem(item, 0);
+							PyObject *mc_value = PyTuple_GetItem(item, 1);
+							if (PyUnicode_Check(mc_key)) {
+								char *mc_name = PyUnicode_AsUTF8(mc_key);
+								UProperty *u_property = ObjectInitializer.GetObj()->GetClass()->FindPropertyByName(FName(UTF8_TO_TCHAR(mc_name)));
+								if (u_property) {
+									if (auto casted_prop = Cast<UMulticastDelegateProperty>(u_property)) {
+										FMulticastScriptDelegate multiscript_delegate = casted_prop->GetPropertyValue_InContainer(ObjectInitializer.GetObj());
+
+										FScriptDelegate script_delegate;
+										UPythonDelegate *py_delegate = NewObject<UPythonDelegate>();
+										py_delegate->SetPyCallable(mc_value);
+										py_delegate->SetSignature(casted_prop->SignatureFunction);
+										// avoid delegates to be destroyed by the GC
+										py_delegate->AddToRoot();
+
+										// fake UFUNCTION for bypassing checks
+										script_delegate.BindUFunction(py_delegate, FName("PyFakeCallable"));
+
+										// add the new delegate
+										multiscript_delegate.Add(script_delegate);
+
+										// re-assign multicast delegate
+										casted_prop->SetPropertyValue_InContainer(ObjectInitializer.GetObj(), multiscript_delegate);
+									}
+								}
+							}
+						}
+					}
+					else {
+						PyErr_Clear();
+					}
 					PyObject *keys = PyDict_Keys(u_py_class_casted->py_uobject->py_dict);
 					Py_ssize_t keys_len = PyList_Size(keys);
 					for (Py_ssize_t i = 0; i < keys_len; i++) {
 						PyObject *key = PyList_GetItem(keys, i);
 						PyObject *value = PyDict_GetItem(u_py_class_casted->py_uobject->py_dict, key);
-						PyObject_SetAttr((PyObject *)new_self, key, value);
+						if (PyUnicode_Check(key)) {
+							char *key_name = PyUnicode_AsUTF8(key);
+							if (!strcmp(key_name, (char *)"__additional_uproperties__"))
+								continue;
+
+						}
+						// special case to bound function to method
+						if (PyFunction_Check(value)) {
+							PyObject *bound_function = PyObject_CallMethod(value, (char*)"__get__", (char*)"O", (PyObject *)new_self);
+							if (bound_function) {
+								PyObject_SetAttr((PyObject *)new_self, key, bound_function);
+								Py_DECREF(bound_function);
+							}
+							else {
+								unreal_engine_py_log_error();
+							}
+						}
+						else {
+							PyObject_SetAttr((PyObject *)new_self, key, value);
+						}
 					}
 					Py_DECREF(keys);
 				}
@@ -1141,6 +1490,41 @@ static int unreal_engine_py_init(ue_PyUObject *self, PyObject *args, PyObject *k
 		PyObject *py_init = PyDict_GetItemString(class_attributes, (char *)"__init__");
 		if (py_init && PyCallable_Check(py_init)) {
 			new_u_py_class->SetPyConstructor(py_init);
+			ue_PyUObject *new_default_self = ue_get_python_wrapper(new_u_py_class->ClassDefaultObject);
+
+			if (!new_default_self) {
+				unreal_engine_py_log_error();
+				UE_LOG(LogPython, Error, TEXT("unable to call __init__ on new ClassDefaultObject"));
+			}
+			else {
+				if (self->py_dict) {
+					PyObject *keys = PyDict_Keys(self->py_dict);
+
+					Py_ssize_t keys_len = PyList_Size(keys);
+					for (Py_ssize_t i = 0; i < keys_len; i++) {
+						PyObject *key = PyList_GetItem(keys, i);
+						PyObject *value = PyDict_GetItem(self->py_dict, key);
+						// special case to bound function to method
+						if (PyFunction_Check(value)) {
+							PyObject *bound_function = PyObject_CallMethod(value, (char*)"__get__", (char*)"O", (PyObject *)new_default_self);
+							if (bound_function) {
+								PyObject_SetAttr((PyObject *)new_default_self, key, bound_function);
+								Py_DECREF(bound_function);
+							}
+							else {
+								unreal_engine_py_log_error();
+							}
+						}
+						else {
+							PyObject_SetAttr((PyObject *)new_default_self, key, value);
+						}
+					}
+					Py_DECREF(keys);
+				}
+
+				new_u_py_class->CallPyConstructor(new_default_self);
+			}
+
 		}
 	}
 
@@ -1181,8 +1565,15 @@ void unreal_engine_init_py_module() {
 	ue_python_init_fhitresult(new_unreal_engine_module);
 	ue_python_init_fcolor(new_unreal_engine_module);
 	ue_python_init_flinearcolor(new_unreal_engine_module);
+	ue_python_init_fquat(new_unreal_engine_module);
 
 	ue_python_init_frandomstream(new_unreal_engine_module);
+
+	ue_python_init_fraw_anim_sequence_track(new_unreal_engine_module);
+
+	ue_python_init_fsoft_skin_vertex(new_unreal_engine_module);
+
+	ue_python_init_fpython_output_device(new_unreal_engine_module);
 
 	ue_python_init_ftimerhandle(new_unreal_engine_module);
 
@@ -1204,8 +1595,26 @@ void unreal_engine_init_py_module() {
 	ue_python_init_farfilter(new_unreal_engine_module);
 	ue_python_init_fassetdata(new_unreal_engine_module);
 	ue_python_init_edgraphpin(new_unreal_engine_module);
+	ue_python_init_fstring_asset_reference(new_unreal_engine_module);
+#if ENGINE_MINOR_VERSION > 12
+	ue_python_init_fbx(new_unreal_engine_module);
+#endif
+#if ENGINE_MINOR_VERSION > 13
+	ue_python_init_fraw_mesh(new_unreal_engine_module);
+#endif
 	ue_python_init_iplugin(new_unreal_engine_module);
 #endif
+
+	ue_python_init_slate(new_unreal_engine_module);
+
+
+	ue_python_init_ihttp_base(new_unreal_engine_module);
+	ue_python_init_ihttp_request(new_unreal_engine_module);
+	ue_python_init_ihttp_response(new_unreal_engine_module);
+
+	ue_python_init_iconsole_manager(new_unreal_engine_module);
+
+	ue_python_init_ivoice_capture(new_unreal_engine_module);
 
 	PyObject *py_sys = PyImport_ImportModule("sys");
 	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
@@ -1438,14 +1847,14 @@ PyObject *ue_py_convert_property(UProperty *prop, uint8 *buffer) {
 	}
 
 	if (auto casted_prop = Cast<UByteProperty>(prop)) {
-		int8 value = casted_prop->GetPropertyValue_InContainer(buffer);
-		return PyLong_FromLong(value);
+		uint8 value = casted_prop->GetPropertyValue_InContainer(buffer);
+		return PyLong_FromUnsignedLong(value);
 	}
 
 #if ENGINE_MINOR_VERSION >= 15
 	if (auto casted_prop = Cast<UEnumProperty>(prop)) {
-		UEnum *value = casted_prop->GetEnum();
-		uint64 enum_index = casted_prop->GetUnderlyingProperty()->GetUnsignedIntPropertyValue(buffer);
+		void *prop_addr = casted_prop->ContainerPtrToValuePtr<void>(buffer);
+		uint64 enum_index = casted_prop->GetUnderlyingProperty()->GetUnsignedIntPropertyValue(prop_addr);
 		return PyLong_FromUnsignedLong(enum_index);
 	}
 #endif
@@ -1548,8 +1957,16 @@ PyObject *ue_py_convert_property(UProperty *prop, uint8 *buffer) {
 
 	if (auto casted_prop = Cast<UArrayProperty>(prop)) {
 		FScriptArrayHelper_InContainer array_helper(casted_prop, buffer);
-		PyObject *py_list = PyList_New(0);
+
 		UProperty *array_prop = casted_prop->Inner;
+
+		// check for TArray<uint8>, so we can use bytearray optimization
+		if (auto uint8_tarray = Cast<UByteProperty>(array_prop)) {
+			uint8 *buf = array_helper.GetRawPtr();
+			return PyByteArray_FromStringAndSize((char *)buf, array_helper.Num());
+		}
+
+		PyObject *py_list = PyList_New(0);
 
 		for (int i = 0; i < array_helper.Num(); i++) {
 			PyObject *item = ue_py_convert_property(array_prop, array_helper.GetRawPtr(i));
@@ -1570,20 +1987,18 @@ PyObject *ue_py_convert_property(UProperty *prop, uint8 *buffer) {
 
 		PyObject *py_dict = PyDict_New();
 
-		int32 num = map_helper.Num();
-		for (int32 i = 0; num; i++) {
+		for (int32 i = 0; i < map_helper.Num(); i++) {
 			if (map_helper.IsValidIndex(i)) {
-				num--;
 
-				uint8 *key = map_helper.GetKeyPtr(i);
-				PyObject *py_key = ue_py_convert_property(map_helper.KeyProp, key);
+				uint8 *ptr = map_helper.GetPairPtr(i);
+
+				PyObject *py_key = ue_py_convert_property(map_helper.KeyProp, ptr);
 				if (!py_key) {
 					Py_DECREF(py_dict);
 					return NULL;
 				}
 
-				uint8 *value = map_helper.GetValuePtr(i);
-				PyObject *py_value = ue_py_convert_property(map_helper.ValueProp, value);
+				PyObject *py_value = ue_py_convert_property(map_helper.ValueProp, ptr);
 				if (!py_value) {
 					Py_DECREF(py_dict);
 					return NULL;
@@ -1639,10 +2054,21 @@ bool ue_py_convert_pyobject(PyObject *py_obj, UProperty *prop, uint8 *buffer) {
 		}
 		if (auto casted_prop = Cast<UByteProperty>(prop)) {
 			PyObject *py_long = PyNumber_Long(py_obj);
-			casted_prop->SetPropertyValue_InContainer(buffer, PyLong_AsLong(py_long));
+			casted_prop->SetPropertyValue_InContainer(buffer, PyLong_AsUnsignedLong(py_long));
 			Py_DECREF(py_long);
 			return true;
 		}
+#if ENGINE_MINOR_VERSION >= 15
+		if (auto casted_prop = Cast<UEnumProperty>(prop)) {
+			PyObject *py_long = PyNumber_Long(py_obj);
+			void *prop_addr = casted_prop->ContainerPtrToValuePtr<void>(buffer);
+			casted_prop->GetUnderlyingProperty()->SetIntPropertyValue(prop_addr, (uint64)PyLong_AsUnsignedLong(py_long));
+			Py_DECREF(py_long);
+			return true;
+		}
+#endif
+
+
 		return false;
 	}
 
@@ -1659,6 +2085,56 @@ bool ue_py_convert_pyobject(PyObject *py_obj, UProperty *prop, uint8 *buffer) {
 			casted_prop->SetPropertyValue_InContainer(buffer, FText::FromString(UTF8_TO_TCHAR(PyUnicode_AsUTF8(py_obj))));
 			return true;
 		}
+		return false;
+	}
+
+	if (PyBytes_Check(py_obj)) {
+		if (auto casted_prop = Cast<UArrayProperty>(prop)) {
+			FScriptArrayHelper_InContainer helper(casted_prop, buffer);
+
+			if (auto item_casted_prop = Cast<UByteProperty>(casted_prop->Inner)) {
+
+				Py_ssize_t pybytes_len = PyBytes_Size(py_obj);
+
+				// fix array helper size
+				if (helper.Num() < pybytes_len) {
+					helper.AddValues(pybytes_len - helper.Num());
+				}
+				else if (helper.Num() > pybytes_len) {
+					helper.RemoveValues(pybytes_len, helper.Num() - pybytes_len);
+				}
+
+				uint8 *buf = (uint8 *)PyBytes_AsString(py_obj);
+				FMemory::Memcpy(helper.GetRawPtr(), buf, pybytes_len);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	if (PyByteArray_Check(py_obj)) {
+		if (auto casted_prop = Cast<UArrayProperty>(prop)) {
+			FScriptArrayHelper_InContainer helper(casted_prop, buffer);
+
+			if (auto item_casted_prop = Cast<UByteProperty>(casted_prop->Inner)) {
+
+				Py_ssize_t pybytes_len = PyByteArray_Size(py_obj);
+
+				// fix array helper size
+				if (helper.Num() < pybytes_len) {
+					helper.AddValues(pybytes_len - helper.Num());
+				}
+				else if (helper.Num() > pybytes_len) {
+					helper.RemoveValues(pybytes_len, helper.Num() - pybytes_len);
+				}
+
+				uint8 *buf = (uint8 *)PyByteArray_AsString(py_obj);
+				FMemory::Memcpy(helper.GetRawPtr(), buf, pybytes_len);
+				return true;
+			}
+		}
+
 		return false;
 	}
 
@@ -1688,6 +2164,65 @@ bool ue_py_convert_pyobject(PyObject *py_obj, UProperty *prop, uint8 *buffer) {
 
 		return false;
 	}
+
+	if (PyTuple_Check(py_obj)) {
+		if (auto casted_prop = Cast<UArrayProperty>(prop)) {
+			FScriptArrayHelper_InContainer helper(casted_prop, buffer);
+
+			UProperty *array_prop = casted_prop->Inner;
+			Py_ssize_t pytuple_len = PyTuple_Size(py_obj);
+
+			// fix array helper size
+			if (helper.Num() < pytuple_len) {
+				helper.AddValues(pytuple_len - helper.Num());
+			}
+			else if (helper.Num() > pytuple_len) {
+				helper.RemoveValues(pytuple_len, helper.Num() - pytuple_len);
+			}
+
+			for (int i = 0; i < (int)pytuple_len; i++) {
+				PyObject *py_item = PyTuple_GetItem(py_obj, i);
+				if (!ue_py_convert_pyobject(py_item, array_prop, helper.GetRawPtr(i))) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		return false;
+	}
+
+#if ENGINE_MINOR_VERSION >= 15
+	if (PyDict_Check(py_obj)) {
+		if (auto casted_prop = Cast<UMapProperty>(prop)) {
+			FScriptMapHelper_InContainer map_helper(casted_prop, buffer);
+
+			PyObject *py_key = nullptr;
+			PyObject *py_value = nullptr;
+			Py_ssize_t pos = 0;
+
+			map_helper.EmptyValues();
+			while (PyDict_Next(py_obj, &pos, &py_key, &py_value)) {
+
+				int32 index = map_helper.AddDefaultValue_Invalid_NeedsRehash();
+				uint8 *ptr = map_helper.GetPairPtr(index);
+
+				if (!ue_py_convert_pyobject(py_key, casted_prop->KeyProp, ptr)) {
+					return false;
+				}
+
+				if (!ue_py_convert_pyobject(py_value, casted_prop->ValueProp, ptr)) {
+					return false;
+				}
+			}
+			map_helper.Rehash();
+
+			return true;
+		}
+
+		return false;
+	}
+#endif
 
 	// structs
 
@@ -1812,6 +2347,77 @@ ue_PyUObject *ue_is_pyuobject(PyObject *obj) {
 	return (ue_PyUObject *)obj;
 }
 
+void ue_bind_events_for_py_class_by_attribute(UObject *u_obj, PyObject *py_class) {
+	// attempt to register events
+	PyObject *attrs = PyObject_Dir(py_class);
+	if (!attrs)
+		return;
+
+	AActor *actor = Cast<AActor>(u_obj);
+	if (!actor) {
+		UActorComponent *component = Cast<UActorComponent>(u_obj);
+		if (!component)
+			return;
+		actor = component->GetOwner();
+	}
+
+	Py_ssize_t len = PyList_Size(attrs);
+	for (Py_ssize_t i = 0; i < len; i++) {
+		PyObject *py_attr_name = PyList_GetItem(attrs, i);
+		if (!py_attr_name || !PyUnicodeOrString_Check(py_attr_name))
+			continue;
+		PyObject *item = PyObject_GetAttrString(py_class, PyUnicode_AsUTF8(py_attr_name));
+		if (item && PyCallable_Check(item)) {
+			// check for ue_event signature
+			PyObject *event_signature = PyObject_GetAttrString(item, (char*)"ue_event");
+			if (event_signature) {
+				if (PyUnicode_Check(event_signature)) {
+					FString event_name = FString(UTF8_TO_TCHAR(PyUnicode_AsUTF8(event_signature)));
+					TArray<FString> parts;
+					int n = event_name.ParseIntoArray(parts, UTF8_TO_TCHAR("."));
+					if (n < 1 || n > 2) {
+						PyErr_SetString(PyExc_Exception, "invalid ue_event syntax, must be the name of an event or ComponentName.Event");
+						unreal_engine_py_log_error();
+					}
+					else {
+						if (n == 1) {
+							if (!ue_bind_pyevent(ue_get_python_wrapper(actor), parts[0], item, true)) {
+								unreal_engine_py_log_error();
+							}
+						}
+						else {
+							bool found = false;
+							for (UActorComponent *component : actor->GetComponents()) {
+								if (component->GetFName() == FName(*parts[0])) {
+									if (!ue_bind_pyevent(ue_get_python_wrapper(component), parts[1], item, true)) {
+										unreal_engine_py_log_error();
+									}
+									found = true;
+									break;
+								}
+							}
+
+							if (!found) {
+								PyErr_SetString(PyExc_Exception, "unable to find component by name");
+								unreal_engine_py_log_error();
+							}
+						}
+					}
+				}
+				else {
+					PyErr_SetString(PyExc_Exception, "ue_event attribute must be a string");
+					unreal_engine_py_log_error();
+				}
+			}
+			Py_XDECREF(event_signature);
+		}
+		Py_XDECREF(item);
+	}
+	Py_DECREF(attrs);
+
+	PyErr_Clear();
+}
+
 // automatically bind events based on class methods names
 void ue_autobind_events_for_pyclass(ue_PyUObject *u_obj, PyObject *py_class) {
 	PyObject *attrs = PyObject_Dir(py_class);
@@ -1882,7 +2488,11 @@ PyObject *py_ue_ufunction_call(UFunction *u_function, UObject *u_obj, PyObject *
 		FString default_key = FString("CPP_Default_") + prop->GetName();
 		FString default_key_value = u_function->GetMetaData(FName(*default_key));
 		if (!default_key_value.IsEmpty()) {
+#if ENGINE_MINOR_VERSION >= 17
+			prop->ImportText(*default_key_value, prop->ContainerPtrToValuePtr<uint8>(buffer), PPF_None, NULL);
+#else
 			prop->ImportText(*default_key_value, prop->ContainerPtrToValuePtr<uint8>(buffer), PPF_Localized, NULL);
+#endif
 		}
 #endif
 	}
@@ -2103,9 +2713,23 @@ UFunction *unreal_engine_add_function(UClass *u_class, char *name, PyObject *py_
 		}
 		else if (ue_PyUObject *py_obj = ue_is_pyuobject(value)) {
 			if (py_obj->ue_object->IsA<UClass>()) {
-				UObjectProperty *prop_base = NewObject<UObjectProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
-				prop_base->SetPropertyClass((UClass *)py_obj->ue_object);
-				prop = prop_base;
+				UClass *p_u_class = (UClass *)py_obj->ue_object;
+				if (p_u_class->IsChildOf<UClass>()) {
+					UClassProperty *prop_base = NewObject<UClassProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+					if (p_u_class == UClass::StaticClass()) {
+						prop_base->SetMetaClass(UObject::StaticClass());
+					}
+					else {
+						prop_base->SetMetaClass(p_u_class->GetClass());
+					}
+					prop_base->PropertyClass = UClass::StaticClass();
+					prop = prop_base;
+				}
+				else {
+					UObjectProperty *prop_base = NewObject<UObjectProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+					prop_base->SetPropertyClass(p_u_class);
+					prop = prop_base;
+				}
 			}
 		}
 		// TODO add native types (like vectors, rotators...)
@@ -2115,6 +2739,7 @@ UFunction *unreal_engine_add_function(UClass *u_class, char *name, PyObject *py_
 			next_property = &prop->Next;
 			*next_property_link = prop;
 			next_property_link = &prop->PropertyLinkNext;
+			UE_LOG(LogPython, Warning, TEXT("added prop %s"), UTF8_TO_TCHAR(p_name));
 		}
 		else {
 			UE_LOG(LogPython, Warning, TEXT("Unable to map argument %s to function %s"), UTF8_TO_TCHAR(p_name), UTF8_TO_TCHAR(name));
@@ -2125,6 +2750,7 @@ UFunction *unreal_engine_add_function(UClass *u_class, char *name, PyObject *py_
 	if (annotations) {
 		PyObject *py_return_value = PyDict_GetItemString(annotations, "return");
 		if (py_return_value) {
+			UE_LOG(LogPython, Warning, TEXT("Return Value found"));
 			UProperty *prop = nullptr;
 			char *p_name = (char *) "ReturnValue";
 			if (PyType_Check(py_return_value)) {
@@ -2143,14 +2769,28 @@ UFunction *unreal_engine_add_function(UClass *u_class, char *name, PyObject *py_
 			}
 			else if (ue_PyUObject *py_obj = ue_is_pyuobject(py_return_value)) {
 				if (py_obj->ue_object->IsA<UClass>()) {
-					UObjectProperty *prop_base = NewObject<UObjectProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
-					prop_base->SetPropertyClass((UClass *)py_obj->ue_object);
-					prop = prop_base;
+					UClass *p_u_class = (UClass *)py_obj->ue_object;
+					if (p_u_class->IsChildOf<UClass>()) {
+						UClassProperty *prop_base = NewObject<UClassProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+						if (p_u_class == UClass::StaticClass()) {
+							prop_base->SetMetaClass(UObject::StaticClass());
+						}
+						else {
+							prop_base->SetMetaClass(p_u_class->GetClass());
+						}
+						prop_base->PropertyClass = UClass::StaticClass();
+						prop = prop_base;
+					}
+					else {
+						UObjectProperty *prop_base = NewObject<UObjectProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+						prop_base->SetPropertyClass(p_u_class);
+						prop = prop_base;
+					}
 				}
 			}
 			// TODO add native types (like vectors, rotators...)
 			if (prop) {
-				prop->SetPropertyFlags(CPF_Parm | CPF_ReturnParm);
+				prop->SetPropertyFlags(CPF_Parm | CPF_OutParm | CPF_ReturnParm);
 				*next_property = prop;
 				next_property = &prop->Next;
 				*next_property_link = prop;
@@ -2162,15 +2802,42 @@ UFunction *unreal_engine_add_function(UClass *u_class, char *name, PyObject *py_
 		}
 	}
 
+	// link to fix props Offset_Internal
+	function->Bind();
+	function->StaticLink(true);
+
 	if (parent_function) {
-		if (!parent_function->IsSignatureCompatibleWith(function)) {
-			UE_LOG(LogPython, Error, TEXT("function %s signature's is not compatible with the parent"), UTF8_TO_TCHAR(name));
+
+		if (!function->IsSignatureCompatibleWith(parent_function)) {
+			TFieldIterator<UProperty> It(parent_function);
+			while (It) {
+				UProperty *p = *It;
+				if (p->PropertyFlags & CPF_Parm) {
+					UE_LOG(LogPython, Warning, TEXT("Parent PROP: %s %d/%d %d %d %d %s %p"), *p->GetName(), (int)p->PropertyFlags, (int)UFunction::GetDefaultIgnoredSignatureCompatibilityFlags(), (int)(p->PropertyFlags & ~UFunction::GetDefaultIgnoredSignatureCompatibilityFlags()), p->GetSize(), p->GetOffset_ForGC(), *p->GetClass()->GetName(), p->GetClass());
+					UClassProperty *ucp = Cast<UClassProperty>(p);
+					if (ucp) {
+						UE_LOG(LogPython, Warning, TEXT("Parent UClassProperty = %p %s %p %s"), ucp->PropertyClass, *ucp->PropertyClass->GetName(), ucp->MetaClass, *ucp->MetaClass->GetName());
+					}
+				}
+				++It;
+			}
+
+			TFieldIterator<UProperty> It2(function);
+			while (It2) {
+				UProperty *p = *It2;
+				if (p->PropertyFlags & CPF_Parm) {
+					UE_LOG(LogPython, Warning, TEXT("Function PROP: %s %d/%d %d %d %d %s %p"), *p->GetName(), (int)p->PropertyFlags, (int)UFunction::GetDefaultIgnoredSignatureCompatibilityFlags(), (int)(p->PropertyFlags & ~UFunction::GetDefaultIgnoredSignatureCompatibilityFlags()), p->GetSize(), p->GetOffset_ForGC(), *p->GetClass()->GetName(), p->GetClass());
+					UClassProperty *ucp = Cast<UClassProperty>(p);
+					if (ucp) {
+						UE_LOG(LogPython, Warning, TEXT("Function UClassProperty = %p %s %p %s"), ucp->PropertyClass, *ucp->PropertyClass->GetName(), ucp->MetaClass, *ucp->MetaClass->GetName());
+					}
+				}
+				++It2;
+			}
+			PyErr_Format(PyExc_Exception, "function %s signature's is not compatible with the parent", name);
 			return nullptr;
 		}
 	}
-
-	function->Bind();
-	function->StaticLink(true);
 
 	function->ParmsSize = 0;
 	function->NumParms = 0;
@@ -2188,9 +2855,19 @@ UFunction *unreal_engine_add_function(UClass *u_class, char *name, PyObject *py_
 		}
 	}
 
-	UE_LOG(LogPython, Warning, TEXT("REGISTERED FUNCTION %s WITH %d PARAMS (size %d) %d"), *function->GetFName().ToString(), function->NumParms, function->ParmsSize, function->PropertiesSize);
+	if (parent_function) {
+		UE_LOG(LogPython, Warning, TEXT("OVERRIDDEN FUNCTION %s WITH %d PARAMS (size %d) %d"), *function->GetFName().ToString(), function->NumParms, function->ParmsSize, function->PropertiesSize);
+	}
+	else {
+		UE_LOG(LogPython, Warning, TEXT("REGISTERED FUNCTION %s WITH %d PARAMS (size %d) %d"), *function->GetFName().ToString(), function->NumParms, function->ParmsSize, function->PropertiesSize);
+	}
 
+
+#if ENGINE_MINOR_VERSION >= 17
+	function->FunctionFlags = (EFunctionFlags)function_flags;
+#else
 	function->FunctionFlags = function_flags;
+#endif
 
 	function->SetNativeFunc((Native)&UPythonFunction::CallPythonCallable);
 

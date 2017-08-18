@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.1.0",
+	"VersionName": "1.2.0",
 	"FriendlyName": "UnrealEnginePython",
 	"Description": "Embed a Python VM in your project",
 	"Category": "Scripting Languages",
@@ -22,11 +22,13 @@
 		},
 		{
 			"Name": "PythonConsole",
-			"Type": "Editor"
+			"Type": "Editor",
+			"LoadingPhase": "PostDefault"
 		},
 		{
 			"Name" : "PythonEditor",
-			"Type" : "Editor"
+			"Type" : "Editor",
+			"LoadingPhase": "PostDefault"
 		}
 	]
 }

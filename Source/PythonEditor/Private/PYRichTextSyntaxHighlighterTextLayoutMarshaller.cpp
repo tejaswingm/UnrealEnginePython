@@ -229,6 +229,9 @@ const TCHAR* BuiltInKeywords[] =
 	TEXT("__le__"),
 	TEXT("__eq__"),
 	TEXT("__call__"),
+	TEXT("with"),
+	TEXT("async"),
+	TEXT("await"),
 };
 
 

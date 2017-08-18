@@ -1,6 +1,11 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
 #include "UnrealEnginePythonPrivatePCH.h"
+#include "PythonBlueprintFunctionLibrary.h"
+#include "HAL/IConsoleManager.h"
+#if ENGINE_MINOR_VERSION < 13
+#include "ClassIconFinder.h"
+#endif
 
 void unreal_engine_init_py_module();
 
@@ -61,7 +66,15 @@ bool FUnrealEnginePythonModule::PythonGILAcquire() {
 	return true;
 }
 
-static void UESetupPythonInterpeter(bool verbose) {
+void FUnrealEnginePythonModule::UESetupPythonInterpreter(bool verbose) {
+
+#if PY_MAJOR_VERSION >= 3
+	wchar_t *argv[] = { UTF8_TO_TCHAR("UnrealEngine"), NULL };
+#else
+	char *argv[] = { (char *)"UnrealEngine", NULL };
+#endif
+	PySys_SetArgv(1, argv);
+
 	unreal_engine_init_py_module();
 
 	PyObject *py_sys = PyImport_ImportModule("sys");
@@ -90,45 +103,20 @@ static void UESetupPythonInterpeter(bool verbose) {
 	PyList_Insert(py_path, 0, PyUnicode_FromString(python_path));
 	PyList_Insert(py_path, 0, PyUnicode_FromString(site_path));
 
+	char *additional_modules_path = TCHAR_TO_UTF8(*AdditionalModulesPath);
+	PyObject *py_additional_modules_path = PyUnicode_FromString(additional_modules_path);
+	PyList_Insert(py_path, 0, py_additional_modules_path);
+
 	if (verbose) {
 		UE_LOG(LogPython, Log, TEXT("Python VM initialized: %s"), UTF8_TO_TCHAR(Py_GetVersion()));
 		UE_LOG(LogPython, Log, TEXT("Python Scripts search path: %s"), UTF8_TO_TCHAR(scripts_path));
 	}
 }
 
-void FUnrealEnginePythonModule::StartupModule()
-{
-	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	FString PyHome;
-	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("Home"), PyHome, GEngineIni)) {
-#if PY_MAJOR_VERSION >= 3
-		wchar_t *home = (wchar_t *)*PyHome;
-#else
-		char *home = TCHAR_TO_UTF8(*PyHome);
-#endif
-
-		Py_SetPythonHome(home);
-	}
-
-	Py_Initialize();
-#if PY_MAJOR_VERSION >= 3
-	wchar_t *argv[] = { UTF8_TO_TCHAR("UnrealEngine"), NULL };
-#else
-	char *argv[] = { (char *)"UnrealEngine", NULL };
-#endif
-	PySys_SetArgv(1, argv);
-
-	PyEval_InitThreads();
-
-	UESetupPythonInterpeter(true);
-
-	main_module = PyImport_AddModule("__main__");
-	main_dict = PyModule_GetDict((PyObject*)main_module);
-	local_dict = main_dict;// PyDict_New();
-
+static void setup_stdout_stderr() {
 	// Redirecting stdout
 	char const* code = "import sys\n"
-		"import unreal_engine as ue\n"
+		"import unreal_engine\n"
 		"class UnrealEngineOutput:\n"
 		"    def __init__(self, logger):\n"
 		"        self.logger = logger\n"
@@ -136,9 +124,147 @@ void FUnrealEnginePythonModule::StartupModule()
 		"        self.logger(buf)\n"
 		"    def flush(self):\n"
 		"        return\n"
-		"sys.stdout = UnrealEngineOutput(ue.log)\n"
-		"sys.stderr = UnrealEngineOutput(ue.log_error)\n";
+		"    def isatty(self):\n"
+		"        return False\n"
+		"sys.stdout = UnrealEngineOutput(unreal_engine.log)\n"
+		"sys.stderr = UnrealEngineOutput(unreal_engine.log_error)\n"
+		"\n"
+		"class event:\n"
+		"    def __init__(self, event_signature):\n"
+		"        self.event_signature = event_signature\n"
+		"    def __call__(self, f):\n"
+		"        f.ue_event = self.event_signature\n"
+		"        return f\n"
+		"\n"
+		"unreal_engine.event = event";
 	PyRun_SimpleString(code);
+}
+
+namespace {
+	static void consoleExecScript(const TArray<FString>& Args)
+	{
+		if (Args.Num() != 1)
+		{
+			UE_LOG(LogPython, Warning, TEXT("Usage: 'py.exec <scriptname>'."));
+			UE_LOG(LogPython, Warning, TEXT("  scriptname: Name of script, must reside in Scripts folder. Ex: myscript.py"));
+		}
+		else
+		{
+			UPythonBlueprintFunctionLibrary::ExecutePythonScript(Args[0]);
+		}
+	}
+
+}
+FAutoConsoleCommand ExecPythonScriptCommand(
+	TEXT("py.exec"),
+	*NSLOCTEXT("UnrealEnginePython", "CommandText_Exec", "Execute python script").ToString(),
+	FConsoleCommandWithArgsDelegate::CreateStatic(consoleExecScript));
+
+void FUnrealEnginePythonModule::StartupModule()
+{
+
+	BrutalFinalize = false;
+
+	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	FString IniValue;
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("Home"), IniValue, GEngineIni)) {
+#if PY_MAJOR_VERSION >= 3
+		wchar_t *home = (wchar_t *)*IniValue;
+#else
+		char *home = TCHAR_TO_UTF8(*IniValue);
+#endif
+		Py_SetPythonHome(home);
+}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeHome"), IniValue, GEngineIni)) {
+		IniValue = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+#if PY_MAJOR_VERSION >= 3
+		wchar_t *home = (wchar_t *)*IniValue;
+#else
+		char *home = TCHAR_TO_UTF8(*IniValue);
+#endif
+		Py_SetPythonHome(home);
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("ProgramName"), IniValue, GEngineIni)) {
+#if PY_MAJOR_VERSION >= 3
+		wchar_t *program_name = (wchar_t *)*IniValue;
+#else
+		char *program_name = TCHAR_TO_UTF8(*IniValue);
+#endif
+		Py_SetProgramName(program_name);
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeProgramName"), IniValue, GEngineIni)) {
+		IniValue = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+#if PY_MAJOR_VERSION >= 3
+		wchar_t *program_name = (wchar_t *)*IniValue;
+#else
+		char *program_name = TCHAR_TO_UTF8(*IniValue);
+#endif
+		Py_SetProgramName(program_name);
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("ScriptsPath"), IniValue, GEngineIni)) {
+		ScriptsPath = IniValue;
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeScriptsPath"), IniValue, GEngineIni)) {
+		ScriptsPath = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("AdditionalModulesPath"), IniValue, GEngineIni)) {
+		AdditionalModulesPath = IniValue;
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeAdditionalModulesPath"), IniValue, GEngineIni)) {
+		AdditionalModulesPath = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("ZipPath"), IniValue, GEngineIni)) {
+		ZipPath = IniValue;
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeZipPath"), IniValue, GEngineIni)) {
+		ZipPath = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+	}
+
+	if (ScriptsPath.IsEmpty()) {
+		ScriptsPath = FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"));
+	}
+
+	if (ZipPath.IsEmpty()) {
+		ZipPath = FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("ue_python.zip"));
+	}
+
+	if (!FPaths::DirectoryExists(ScriptsPath)) {
+		IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
+		PlatformFile.CreateDirectory(*ScriptsPath);
+	}
+
+	Py_Initialize();
+
+	PyEval_InitThreads();
+
+#if WITH_EDITOR
+	StyleSet = MakeShareable(new FSlateStyleSet("UnrealEnginePython"));
+	StyleSet->SetContentRoot(IPluginManager::Get().FindPlugin("UnrealEnginePython")->GetBaseDir() / "Resources");
+	StyleSet->Set("ClassThumbnail.PythonScript", new FSlateImageBrush(StyleSet->RootToContentDir("Icon128.png"), FVector2D(128.0f, 128.0f)));
+	FSlateStyleRegistry::RegisterSlateStyle(*StyleSet.Get());
+#if ENGINE_MINOR_VERSION < 13
+	FClassIconFinder::RegisterIconSource(StyleSet.Get());
+#endif
+#endif
+
+	UESetupPythonInterpreter(true);
+
+	main_module = PyImport_AddModule("__main__");
+	main_dict = PyModule_GetDict((PyObject*)main_module);
+	local_dict = main_dict;// PyDict_New();
+
+	// Redirecting stdout
+	setup_stdout_stderr();
+
 	//import upymodule_importer
 	PyImport_ImportModule("upymodule_importer");
 
@@ -155,15 +281,6 @@ void FUnrealEnginePythonModule::StartupModule()
 		unreal_engine_py_log_error();
 	}
 
-	
-
-#if WITH_EDITOR
-	// register commands (after importing ue_site)
-	FPythonSlateCommands::Register();
-	// apply extenders
-	FPythonSlateCommands::ApplyPythonExtenders();
-#endif
-
 	// release the GIL
 	PythonGILRelease();
 
@@ -175,8 +292,10 @@ void FUnrealEnginePythonModule::ShutdownModule()
 	// we call this function before unloading the module.
 
 	UE_LOG(LogPython, Log, TEXT("Goodbye Python"));
-	PythonGILAcquire();
-	Py_Finalize();
+	if (!BrutalFinalize) {
+		PythonGILAcquire();
+		Py_Finalize();
+	}
 }
 
 void FUnrealEnginePythonModule::RunString(char *str) {
@@ -203,7 +322,9 @@ void FUnrealEnginePythonModule::RunStringSandboxed(char *str) {
 	PyThreadState_Swap(nullptr);
 	PyThreadState_Swap(py_new_state);
 
-	UESetupPythonInterpeter(false);
+	UESetupPythonInterpreter(false);
+
+	setup_stdout_stderr();
 
 	PyObject *m = PyImport_AddModule("__main__");
 	if (m == NULL) {
@@ -231,7 +352,7 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 	char *full_path = filename;
 	if (!FPaths::FileExists(filename))
 	{
-		full_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"), *FString("/"), UTF8_TO_TCHAR(filename)));
+		full_path = TCHAR_TO_UTF8(*FPaths::Combine(*ScriptsPath, UTF8_TO_TCHAR(filename)));
 	}
 #if PY_MAJOR_VERSION >= 3
 	FILE *fd = nullptr;
@@ -269,12 +390,12 @@ void FUnrealEnginePythonModule::RunFile(char *filename) {
 }
 
 // run a python script in a new sub interpreter (useful for unit tests)
-void FUnrealEnginePythonModule::RunFileSandboxed(char *filename) {
+void FUnrealEnginePythonModule::RunFileSandboxed(char *filename, void(*callback)(void *arg), void *arg) {
 	FScopePythonGIL gil;
 	char *full_path = filename;
 	if (!FPaths::FileExists(filename))
 	{
-		full_path = TCHAR_TO_UTF8(*FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"), *FString("/"), UTF8_TO_TCHAR(filename)));
+		full_path = TCHAR_TO_UTF8(*FPaths::Combine(*ScriptsPath, UTF8_TO_TCHAR(filename)));
 	}
 
 	PyThreadState *_main = PyThreadState_Get();
@@ -287,7 +408,9 @@ void FUnrealEnginePythonModule::RunFileSandboxed(char *filename) {
 	PyThreadState_Swap(nullptr);
 	PyThreadState_Swap(py_new_state);
 
-	UESetupPythonInterpeter(false);
+	UESetupPythonInterpreter(false);
+
+	setup_stdout_stderr();
 
 	PyObject *m = PyImport_AddModule("__main__");
 	if (m == NULL) {
@@ -313,6 +436,7 @@ void FUnrealEnginePythonModule::RunFileSandboxed(char *filename) {
 		return;
 	}
 #endif
+
 	PyObject *eval_ret = PyRun_File(fd, full_path, Py_file_input, global_dict, global_dict);
 	fclose(fd);
 	if (!eval_ret) {
@@ -333,6 +457,10 @@ void FUnrealEnginePythonModule::RunFileSandboxed(char *filename) {
 		return;
 	}
 #endif
+
+	if (callback)
+		callback(arg);
+
 	Py_EndInterpreter(py_new_state);
 	PyThreadState_Swap(_main);
 }

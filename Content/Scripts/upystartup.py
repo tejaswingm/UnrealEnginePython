@@ -2,6 +2,7 @@ import sys
 import unreal_engine as ue
 import json
 import upycmd as cmd
+import os
 from os import listdir
 from os import path as ospath
 
@@ -11,6 +12,14 @@ def checkPipDirectory():
 	#get our python scripts path
 	configPath = cmd.PythonPluginScriptPath() + '/upyconfig.json'
 	correctPipPath = cmd.PythonHomeScriptsPath()
+
+	#check that we have a config file, if not make an empty one
+	if not (os.path.exists(configPath)):
+		with open(configPath, "w+") as configFile:
+			configs = {}
+			configs['pipDirectoryPath'] = ""
+			configFile.seek(0)
+			configFile.write(json.dumps(configs))
 
 	#compare our current pip directory with the installed one, if they differ reinstall pip
 	

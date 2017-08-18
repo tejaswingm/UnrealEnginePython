@@ -13,15 +13,21 @@ The Python VM tries to give easy access to all of the UE4 internal api + its ref
 
 It is not meant as a way to avoid blueprints or c++ but as a good companion to them (albeit reducing the amount of c++ required for coding a game could be an interesting thing ;). If your development pipeline is already python-based (Maya, Blender, ...), this plugin could easily help you in integrating unreal into it.
 
-Another funny feature (well, a side effect ;) is that you can change your python code even after the project has been packaged. You can potentially build a completely new game from an already packaged one.
+If you want to have an idea of what the plugin can do, jump here: https://github.com/20tab/UnrealEnginePython/blob/master/tutorials/YourFirstAutomatedPipeline.md
 
 In addition to this, the plugin automatically adds an actor class (PyActor), a pawn class (PyPawn), a character class (PyCharacter) and a component class (PythonComponent) for "gentle" integration of python in your games.
 
-In the development menu, you get access to the 'PythonConsole' too, you can use it to trigger python commands directly from the editor. There is even an experimental Editor/IDE included, you can run it from the Window/Layout/Python Editor menu item.
+In the spirit of automating tasks, even wrappers for third party libraries used by UE4 are exposed in a 'pythonic' way. As an example the FbxSdk is exposed to allow low-level interaction with Fbx files. This is an example extracting animation curves: https://github.com/20tab/UnrealEnginePython/blob/master/examples/fbx_curves_extractor.py
+
+Another funny feature (well, a side effect ;) is that you can change your python code even after the project has been packaged. You can potentially build a completely new game from an already packaged one.
+
+Once the plugin is installed and enabled, you get access to the 'PythonConsole' item in the 'Development Menu', you can use it to trigger python commands directly from the editor. There is even an experimental Editor/IDE included, you can run it from the Window/Layout/Python Editor menu item.
 
 All of the exposed engine features are under the 'unreal_engine' virtual module (it is completely coded in c into the plugin, so do not expect to run 'import unreal_engine' from a standard python shell)
 
-The currently supported Unreal Engine versions are 4.12, 4.13, 4.14 and 4.15
+The currently supported Unreal Engine versions are 4.12, 4.13, 4.14, 4.15, 4.16 and 4.17.
+
+We support official python.org releases as well as IntelPython and Anaconda distributions.
 
 # Binary installation on Windows (64 bit)
 
@@ -50,6 +56,8 @@ git clone https://github.com/20tab/UnrealEnginePython
 ```
 
 By default the build procedure will try to discover your python installation looking at hardcoded known paths. If you want to specify a custom python installation (or the autodetection simply fails) you can change it in the Source/UnrealEnginePython/UnrealEnginePython.Build.cs file at this line: https://github.com/20tab/UnrealEnginePython/blob/master/Source/UnrealEnginePython/UnrealEnginePython.Build.cs#L10
+
+Note: ensure you have a 64bit python installation
 
 
 choose a project you want to install the plugin into, open the file explorer (you can do it from the epic launcher too) and:
@@ -140,9 +148,8 @@ git clone https://github.com/20tab/UnrealEnginePython
 
 NOTE: always run your project from a terminal so you can see startup logs (they are really useful when building the plugin the first time, if you cannot build the plugin, open an issue on github pasting the related log lines).
 
-If you want to use python2 just edit the Source/UnrealEnginePython/UnrealEnginePython.Build.cs file and change the pythonHome string to "python27" (ensure to have the python2.7-dev package installed).
+If you want to use python2 (or another specific version) just edit the Source/UnrealEnginePython/UnrealEnginePython.Build.cs file and change the pythonHome string accordingly (ensure to have the python2.7-dev package installed).
 
-If you want to use an alternative python installation, go to the end of UnrealEnginePython.Build.cs, and change the paths of includes and libpython accordingly
 
 Upgrade the plugin on Linux
 ---------------------------
@@ -302,67 +309,10 @@ To access the actor you can use:
 actor = self.uobject.get_owner()
 ```
 
-The following example implements the third person official blueprint as a python component in non-evented way (this is an anti-pattern in unreal engine, see below for the evented-based approach):
+The following example implements the third person official blueprint as a python component:
 
 ```py
-import unreal_engine as ue
-
 class Player:
-    def begin_play(self):
-        # get a reference to the owing pawn (a character)
-        self.pawn = self.uobject.get_owner()
-        
-        # allows the pawn to receive axis values
-        self.pawn.bind_input_axis('TurnRate')
-        self.pawn.bind_input_axis('LookUpRate')
-        
-        # the following two values are originally implemented as blueprint variable
-        self.base_turn_rate = 45.0
-        self.base_look_up_rate = 45.0
-        
-         # bind the other axis
-        self.pawn.bind_input_axis('Turn')
-        self.pawn.bind_input_axis('LookUp')
-
-        self.pawn.bind_input_axis('MoveForward')
-        self.pawn.bind_input_axis('MoveRight')
-        
-    def tick(self, delta_time):
-        # z rotation
-        turn_rate = self.pawn.get_input_axis('TurnRate') * self.base_turn_rate * delta_time
-        self.pawn.add_controller_yaw_input(turn_rate)
-
-        # y rotation
-        look_up_rate = self.pawn.get_input_axis('LookUpRate') * self.base_look_up_rate * delta_time
-        self.pawn.add_controller_pitch_input(look_up_rate)
-
-        # mouse vertical
-        self.pawn.add_controller_yaw_input(self.pawn.get_input_axis('Turn'))
-
-        # mouse horizontal
-        self.pawn.add_controller_pitch_input(self.pawn.get_input_axis('LookUp'))
-
-        # get current control rotation
-        rot = self.pawn.get_control_rotation()
-        
-        # move the character
-        fwd = ue.get_forward_vector(0, 0, rot[2])
-        right = ue.get_right_vector(0, 0, rot.yaw)
-
-        self.pawn.add_movement_input(fwd, self.pawn.get_input_axis('MoveForward'))
-        self.pawn.add_movement_input(right, self.pawn.get_input_axis('MoveRight'))
-
-        # manage jump
-        if self.pawn.is_action_pressed('Jump'):
-            self.pawn.jump()
-        if self.pawn.is_action_released('Jump'):
-            self.pawn.stop_jumping()
-```
-
-And as promised the 'blessed' evented approach:
-
-```py
-class PlayerEvented:
     
     def begin_play(self):
         # get a reference to the owing pawn (a character)
@@ -472,7 +422,7 @@ Reflection based functions are those in camelcase (or with the first capital let
 The automagic UClass, UStruct and UEnums mappers
 ------------------------------------------------
 
-Instead of doing a gazilion of unreal_engine.find_class(name) calls, the plugin adds a 'magic' module called unreal_engine.classes. It allows to import unreal classes like python classes:
+Instead of doing a gazilion of unreal_engine.find_class(name) calls, the plugin adds three 'magic' modules called unreal_engine.classes, unreal_engine.structs and unreal_engine.enums. They allows to import unreal classes/structs/enums like python classes:
 
 ```py
 from unreal_engine.classes import ActorComponent, ForceFeedbackEffect, KismetSystemLibrary
@@ -516,7 +466,7 @@ if is_hitting_something:
     ue.log(hit_result)
 ```
 
-Structs are exposed by the unreal_engine.structs virtual module. Remember that structs are passed by value (not by ref like UObject's), so a dedicated unreal_engine.UScriptStruct python class is exposed.
+Remember that structs are passed by value (not by ref like UObject's), so a dedicated unreal_engine.UScriptStruct python class is exposed.
 
 To create a new struct instance you can do:
 
@@ -524,6 +474,14 @@ To create a new struct instance you can do:
 from unreal_engine.structs import TerrificStruct
 
 ts = TerrificStruct()
+```
+
+or (to initialize some of its fields)
+
+```python
+from unreal_engine.structs import TerrificStruct
+
+ts = TerrificStruct(Foo='Bar', Test=17.22)
 ```
 
 To access the fields of a struct just call the fields() method.
@@ -544,7 +502,7 @@ This works like PyActor, but this time you generate a new Pawn class (that you c
 The 'World' concept
 -------------------
 
-Every uobject is mapped to a world (UWorld in c++). Generally when you play on a Level your objects all live in the same world, but at the same time there could be multiple worlds (for example while testing in the editor there is a world for the editor and one for the simulation)
+Every actor is mapped to a world (UWorld in c++). Generally when you play on a Level your objects all live in the same world, but at the same time there could be multiple worlds (for example while testing in the editor there is a world for the editor and one for the simulation)
 
 While it is pretty rare to reference other worlds, you may need to compare the world of two uobject's (for example you may have a reference in your python module to a uobject of a hidden world and you want to check if you need to use it).
 
@@ -575,7 +533,7 @@ Primitives and Math functions
 
 The plugin exposes FVector, FRotator, FQuat, FColor, FHitResult and a bunch of the internal handles.
 
-Where meaningful math operations are exposed:
+Where meaningful, math operations are exposed:
 
 
 ```py
@@ -618,159 +576,14 @@ texture_class = ue.find_class('Texture2D')
 a_specific_texture = ue.load_object(texture_class, '/Game/Textures/logo2')
 ```
 
+More infos about dealing with assets are available here: https://github.com/20tab/UnrealEnginePython/blob/master/docs/ManagingAssets.md
+
 The as_dict() method
 --------------------
 
 This special method can be called on any uobject: it will attempt to serialize it to a python dictionary
 
-Navigation
----------
 
-The only exposed navigation-related method is 'simple_move_to_location'. It expects a Pawn with a movement component (like a Character)
-
-```py
-class MoveToTargetComponent:
-
-    def begin_play(self):
-        # get a 'target point' reference from a pawn public property
-        target = self.uobject.get_owner().get_property('target')
-        self.uobject.get_owner().simple_move_to_location(target.get_actor_location())
-        
-    def tick(self, delta_time):
-        pass
-```
-
-Another example for diablo-like movements (click to move, add this component to a character)
-
-```py
-class Walker:
-    def begin_play(self):
-        self.uobject.show_mouse_cursor()
-    def tick(self, delta_time):
-        if not self.uobject.is_input_key_down('LeftMouseButton'):
-            return
-        hit = self.uobject.get_hit_result_under_cursor(ue.COLLISION_CHANNEL_VISIBILITY)
-        if not hit:
-            return
-        # hit is a unreal_engine.FHitResult object
-        self.uobject.simple_move_to_location(hit.impact_point)
-```
-
-Physics
--------
-
-The 'set_simulate_physics' method is exposed for enabling physic on PrimitiveComponent.
-
-Remember that you cannot enable physics withotu setting the collision presetes accordingly:
-
-```py
-
-# PyActor with a staticmeshcomponent (a sphere)
-# when overlapped it became a physic object
-class Ball:
-
-    def begin_play(self):
-        self.sphere = self.uobject.get_actor_component_by_type(ue.find_class('StaticMeshComponent'))
-        
-    def tick(self, delta_time):
-        pass
-    
-    def on_actor_begin_overlap(self, me, other_actor):
-        # change collision profile
-        self.sphere.call('SetCollisionProfileName BlockAll')
-        # enable physics
-        self.sphere.set_simulate_physics()
-        
-    # once the object became a physics one, hit event will start arriving
-    def on_actor_hit(self, me, other, *args):
-        ue.print_string('HIT with ' + other.get_name())
-```
-
-TODO: expose more physics functions, expecially the one for applying forces
-
-Timer
------
-
-A custom python class is exposed (unreal_engine.FTimerHandler) to support UE4 timers:
-
-```py
-# create a timer
-timer = self.uobject.set_timer(frequency, callable[, loop, initial])
-# clear a timer
-timer.clear()
-# pause a timer
-timer.pause()
-# unpause a timer
-timer.unpause()
-```
-
-Fracturing
-----------
-
-Fracturing is one of the best features you get for free in unreal engine.
-
-You can apply damage to destructible objects directly from python (more kind of damages will be added soon)
-
-```py
-class DestroyMeComponent:
-
-    def begin_play(self):
-        # get a reference to a destructible component in the actor
-        self.destructible = self.uobject.get_actor_component_by_type(ue.find_class('DestructibleComponent'))
-        
-    def tick(self, delta_time):
-        pass
-        
-    def explode(self):
-        # damage amount
-        amount = 1000
-        strength = 20000
-        position = self.uobject.get_owner().get_actor_location()
-        up = self.uobject.get_owner().get_actor_up()
-        self.destructible.destructible_apply_damage(amount, strength, position, up)
-    
-```
-
-you can now call the 'explode' method via blueprints using the 'Call Python Component Method' node
-
-Another approach (way more easier) would be adding a RadialForceComponent and fire it when you want to destroy something:
-
-```py
-# get a reference to the RadialForceComponent
-self.radial_force = self.uobject.get_owner().get_actor_component_by_type(ue.find_class('RadialForceComponent'))
-
-# fire it !
-self.radial_force.call('FireImpulse')
-```
-
-
-
-Splines
--------
-
-Splines are another amazing UE4 feature.
-
-The following component shows how to move another actor over a spline path:
-
-```py
-class Spline:
-    def begin_play(self):
-        # get a reference to a spline component
-        self.spline = self.uobject.get_owner().get_actor_component_by_type(ue.find_class('SplineComponent'))
-        # find the length of the spline
-        self.max_distance = self.spline.get_spline_length()
-        self.distance = 0.0
-        # get a reference to the actor to move (as a blueprint property)
-        self.actor_to_move = self.uobject.get_owner().get_property('ObjectToMove')
-
-    def tick(self, delta_time):
-        if self.distance >= self.max_distance:
-            return
-        # find the next point on the spline
-        next_point = self.spline.get_world_location_at_distance_along_spline(self.distance)
-        self.actor_to_move.set_actor_location(next_point)
-        self.distance += 100 * delta_time
-```
 
 Blueprints integration
 ----------------------
@@ -805,7 +618,6 @@ class Curver:
 
 ```
 
-
 Events
 ------
 
@@ -815,67 +627,50 @@ You can easily bind events (as seen before) with the bind_event function
 self.uobject.bind_event('OnActorBeginOverlap', a_funny_callback)
 ```
 
-Support for mapping custom events directly from python is currently worked on.
+You can obviously bind to Event Dispatchers too.
+
+Triggering events is basically like calling functions, self.uobject.call('OnActorBeginOverlap') will be more than enough.
 
 If you want to map events from a blueprint to a python function, the best thing to do is using the 'python call' blueprint functions exposed by the various plugin classes:
 
 ![Alt text](screenshots/unreal_screenshot3.png?raw=true "Screenshot 3")
 
-Audio
------
+Plugin Configuration
+--------------------
 
-The uobject.play_sound_at_location(sound, position[, volume_multiplier, pitch_multiplier, start_time]) api method is exposed:
+You can tune your python environment adding a [Python] stanza to the Config/DefaultEngine.ini file.
 
-```py
-# get a reference to asound
-sound = ue.find_object('my_sound')
-# play the sound at position 0,0,0
-self.uobject.play_sound_at_location(sound, FVector(0, 0, 0))
-```
+The following parameters are supported:
 
-If you prefer to work with AudioComponent:
+* `Home`: set the path of the python installation, useful for forcing the python vm to search modules in a specific directory (like old-style virtualenvs)
+* `RelativeHome`: like Home but relative to the /Content directory
+* `ProgramName`: set the python program name path
+* `RelativeProgramName`: like ProgramName, but the path is relative to the /Content directory
+* `ScriptsPath`: change the default path on where Unreal Engine searches for python scripts
+* `RelativeScriptsPath`: like ScriptsPath, but relative to the /Content directory
+* `AdditionalModulesPath`: add the specified directory to sys.path
+* `RelativeAdditionalModulesPath`: like AdditionalModulesPath, but the path is relative to the /Content directory
+* `ZipPath`: allow to specify a .zip file that is added to sys.path
+* `RelativeZipPath`: like ZipPath, but the path is relative to the /Content directory
 
-```py
-class Sounder:
-    def begin_play(self):
-        # find the AudioComponent of this actor
-        self.audio = self.uobject.get_component_by_type('AudioComponent')
-        self.audio.call('Stop')
-    def tick(self, delta_time):
-        # start the sound when pressing 'A'
-        if self.uobject.is_input_key_down('A'):
-            self.audio.call('Play')
-```
+Example:
 
-Animations
-----------
-
-You can control animation blueprints variables and events easily:
-
-```py
-# get a reference to the skeletal mesh
-skeletal = self.uobject.get_component_by_type('SkeletalMeshComponent')
-# get a reference to the animation class
-animation = skeletal.get_anim_instance()
-
-# set a variable
-animation.set_property('Speed', 17.0)
-
-# trigger a custom event
-animation.call('AttackWithSword')
+```ini
+[Python]
+Home = C:/FooBar/Python36
 ```
 
 Packaging
 ---------
 
-When you package your projects, remember to include the libpython (dll or dylib) in the binaries folder and the Scripts directory.
+When you package your projects, remember to include the libpython (dll or dylib or .so based on your operating system) in the binaries folder and the Scripts directory (if you do not want to force the user to have python installed in its system). For Windows system you can use the embedded distributions available in the official python.org site. Just uncompress the zip in the plugin binary folder (at the same level of UnrealEnginePython.dll)
 
 If you do not want to distribute python sources, you can include only the ```__pycache__``` directory with the bytecode.
 
 Do not forget to include python third party modules (if you use any of them in your project)
 
-Examples
---------
+Quick Examples
+--------------
 
 This is a PyActor destroying itself whenever another actor overlap it. Remember to add a mesh component to it (like a sphere) and set its collision behaviour as 'OverlapAll'. This could be tested with the third person official template.
 
@@ -883,8 +678,7 @@ This is a PyActor destroying itself whenever another actor overlap it. Remember 
 class Ball:
     def begin_play(self):
         ue.print_string('Hello')
-    def tick(self, delta_time):
-        pass
+
     def on_actor_begin_overlap(self, other_actor):
         ue.print_string('Collided with ' + other_actor.get_name())
         self.uobject.actor_destroy()
@@ -905,10 +699,9 @@ class SuperHero:
         new_actor.set_property('PythonModule', 'gameclasses')
         # set the python class
         new_actor.set_property('PythonClass', 'Vertical')
-        
-    def tick(self, delta_time):
-        pass
 ```
+
+For more examples: https://github.com/20tab/UnrealEnginePython/tree/master/examples
 
 Spawning Notes
 --------------
@@ -1102,11 +895,19 @@ Exposing the full ue4 api is a huge amount of work, feel free to make pull reque
 
 We still do not have a plugin icon ;)
 
-The build system on Linux is still very "weird"
-
 Contacts and Commercial Support
 -------------------------------
 
 If you want to contact us (for help, support, sponsorship), drop a mail to info at 20tab.com or follow @unbit on twitter
 
 We offer commercial support for both UnrealEngine and UnrealEnginePython, again drop a mail to info at 20tab.com for more infos
+
+Special Thanks
+--------------
+
+Such a big project requires constant sponsorship, special thanks go to:
+
+* Kite & Lighting http://kiteandlightning.la/ (they are sponsoring various areas of the project, expecially the slate api)
+
+* GoodTH.INC https://www.goodthinc.com/ (they are sponsoring the sequencer api)
+

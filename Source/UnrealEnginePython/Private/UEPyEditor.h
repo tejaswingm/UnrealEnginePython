@@ -7,16 +7,25 @@
 #if WITH_EDITOR
 
 PyObject *py_unreal_engine_get_editor_world(PyObject *, PyObject * args);
+PyObject *py_unreal_engine_editor_play_in_viewport(PyObject *, PyObject * args);
 PyObject *py_unreal_engine_editor_get_selected_actors(PyObject *, PyObject *);
 PyObject *py_unreal_engine_editor_deselect_actors(PyObject *, PyObject *);
 PyObject *py_unreal_engine_editor_select_actor(PyObject *, PyObject *);
 PyObject *py_unreal_engine_import_asset(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_asset(PyObject *, PyObject *);
+PyObject *py_unreal_engine_find_asset(PyObject *, PyObject *);
+PyObject *py_unreal_engine_delete_object(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_assets(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_selected_assets(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_assets_by_class(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_assets_by_filter(PyObject *, PyObject *, PyObject *);
 PyObject *py_unreal_engine_set_fbx_import_option(PyObject *, PyObject *);
+
+PyObject *py_unreal_engine_create_modal_save_asset_dialog(PyObject *, PyObject *);
+
+PyObject *py_unreal_engine_console_exec(PyObject *, PyObject * args);
+
+PyObject *py_unreal_engine_editor_tick(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_get_discovered_plugins(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_enabled_plugins(PyObject *, PyObject *);
@@ -76,6 +85,10 @@ PyObject *py_unreal_engine_allow_actor_script_execution_in_editor(PyObject *, Py
 
 PyObject *py_unreal_engine_get_asset_referencers(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_asset_dependencies(PyObject *, PyObject *);
+
+PyObject *py_unreal_engine_open_editor_for_asset(PyObject *, PyObject *);
+PyObject *py_unreal_engine_close_editor_for_asset(PyObject *, PyObject *);
+PyObject *py_unreal_engine_close_all_asset_editors(PyObject *, PyObject *);
 
 // transactions
 PyObject *py_unreal_engine_begin_transaction(PyObject *, PyObject *);
