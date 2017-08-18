@@ -3,6 +3,8 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
 
+
+
 PyObject *py_unreal_engine_log(PyObject * self, PyObject * args) {
 	PyObject *py_message;
 	if (!PyArg_ParseTuple(args, "O:log", &py_message)) {
@@ -83,13 +85,23 @@ PyObject *py_unreal_engine_add_on_screen_debug_message(PyObject * self, PyObject
 PyObject *py_unreal_engine_print_string(PyObject * self, PyObject * args) {
 
 	PyObject *py_message;
-	if (!PyArg_ParseTuple(args, "O:print_string", &py_message)) {
+	float timeout = 2.0;
+	PyObject *py_color = nullptr;
+	if (!PyArg_ParseTuple(args, "O|fO:print_string", &py_message, &timeout, &py_color)) {
 		return NULL;
 	}
 
 	if (!GEngine) {
-		Py_INCREF(Py_None);
-		return Py_None;
+		Py_RETURN_NONE;
+	}
+
+	FColor color = FColor::Cyan;
+
+	if (py_color) {
+		ue_PyFColor *f_color = py_ue_is_fcolor(py_color);
+		if (!f_color)
+			return PyErr_Format(PyExc_Exception, "argument is not a FColor");
+		color = f_color->color;
 	}
 
 	PyObject *stringified = PyObject_Str(py_message);
@@ -97,12 +109,11 @@ PyObject *py_unreal_engine_print_string(PyObject * self, PyObject * args) {
 		return PyErr_Format(PyExc_Exception, "argument cannot be casted to string");
 	char *message = PyUnicode_AsUTF8(stringified);
 
-	GEngine->AddOnScreenDebugMessage(-1, 2.0, FColor::Cyan, FString::Printf(TEXT("%s"), UTF8_TO_TCHAR(message)));
+	GEngine->AddOnScreenDebugMessage(-1, timeout, color, FString(UTF8_TO_TCHAR(message)));
 
 	Py_DECREF(stringified);
 
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 PyObject *py_unreal_engine_get_forward_vector(PyObject * self, PyObject * args) {
@@ -141,6 +152,45 @@ PyObject *py_unreal_engine_convert_relative_path_to_full(PyObject * self, PyObje
 	return PyUnicode_FromString(TCHAR_TO_UTF8(*FPaths::ConvertRelativePathToFull(UTF8_TO_TCHAR(path))));
 }
 
+PyObject *py_unreal_engine_object_path_to_package_name(PyObject * self, PyObject * args) {
+	char *path;
+	if (!PyArg_ParseTuple(args, "s:object_path_to_package_name", &path)) {
+		return NULL;
+	}
+	return PyUnicode_FromString(TCHAR_TO_UTF8(*FPackageName::ObjectPathToPackageName(UTF8_TO_TCHAR(path))));
+}
+
+PyObject *py_unreal_engine_get_path(PyObject * self, PyObject * args) {
+	char *path;
+	if (!PyArg_ParseTuple(args, "s:get_path", &path)) {
+		return NULL;
+	}
+	return PyUnicode_FromString(TCHAR_TO_UTF8(*FPaths::GetPath(UTF8_TO_TCHAR(path))));
+}
+
+PyObject *py_unreal_engine_get_base_filename(PyObject * self, PyObject * args) {
+	char *path;
+	if (!PyArg_ParseTuple(args, "s:get_base_filename", &path)) {
+		return NULL;
+	}
+	return PyUnicode_FromString(TCHAR_TO_UTF8(*FPaths::GetBaseFilename(UTF8_TO_TCHAR(path))));
+}
+
+PyObject *py_unreal_engine_create_world(PyObject * self, PyObject * args) {
+	int world_type = 0;
+	if (!PyArg_ParseTuple(args, "|i:create_world", &world_type)) {
+		return NULL;
+	}
+
+	UWorld *world = UWorld::CreateWorld((EWorldType::Type)world_type, false);
+
+	ue_PyUObject *ret = ue_get_python_wrapper(world);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
+}
+
 PyObject *py_unreal_engine_find_class(PyObject * self, PyObject * args) {
 	char *name;
 	if (!PyArg_ParseTuple(args, "s:find_class", &name)) {
@@ -176,6 +226,24 @@ PyObject *py_unreal_engine_find_enum(PyObject * self, PyObject * args) {
 	Py_INCREF(ret);
 	return (PyObject *)ret;
 
+}
+
+PyObject *py_unreal_engine_load_package(PyObject * self, PyObject * args) {
+	char *name;
+	if (!PyArg_ParseTuple(args, "s:load_package", &name)) {
+		return nullptr;
+	}
+
+	UPackage *u_package = LoadPackage(nullptr, UTF8_TO_TCHAR(name), LOAD_None);
+
+	if (!u_package)
+		return PyErr_Format(PyExc_Exception, "unable to load package %s", name);
+
+	ue_PyUObject *ret = ue_get_python_wrapper(u_package);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
 }
 
 PyObject *py_unreal_engine_load_class(PyObject * self, PyObject * args) {
@@ -317,7 +385,28 @@ PyObject *py_unreal_engine_string_to_guid(PyObject * self, PyObject * args) {
 	}
 
 	return PyErr_Format(PyExc_Exception, "unable to build FGuid");
+}
 
+PyObject *py_unreal_engine_slate_tick(PyObject * self, PyObject * args) {
+	FSlateApplication::Get().PumpMessages();
+	FSlateApplication::Get().Tick();
+	Py_RETURN_NONE;
+}
+
+PyObject *py_unreal_engine_engine_tick(PyObject * self, PyObject * args) {
+	float delta_seconds = FApp::GetDeltaTime();
+	PyObject *py_bool = nullptr;
+	if (!PyArg_ParseTuple(args, "|fO:engine_tick", &delta_seconds, &py_bool)) {
+		return NULL;
+	}
+
+	GEngine->Tick(delta_seconds, (py_bool && PyObject_IsTrue(py_bool)) ? true : false);
+
+	Py_RETURN_NONE;
+}
+
+PyObject *py_unreal_engine_get_delta_time(PyObject * self, PyObject * args) {
+	return PyFloat_FromDouble(FApp::GetDeltaTime());
 }
 
 
@@ -556,6 +645,23 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 	return Py_None;
 }
 
+PyObject *py_unreal_engine_get_game_viewport_size(PyObject *self, PyObject * args) {
+
+	if (!GEngine->GameViewport) {
+		return PyErr_Format(PyExc_Exception, "unable to get GameViewport");
+	}
+
+	FVector2D size;
+	GEngine->GameViewport->GetViewportSize(size);
+
+	return Py_BuildValue("(ff)", size.X, size.Y);
+}
+
+
+PyObject *py_unreal_engine_get_resolution(PyObject *self, PyObject * args) {
+	return Py_BuildValue("(ff)", GSystemResolution.ResX, GSystemResolution.ResY);
+}
+
 PyObject *py_unreal_engine_get_viewport_screenshot(PyObject *self, PyObject * args) {
 
 	if (!GEngine->GameViewport) {
@@ -746,4 +852,66 @@ PyObject *py_unreal_engine_editor_get_pie_viewport_size(PyObject *self, PyObject
 }
 #endif
 
+PyObject *py_unreal_engine_create_package(PyObject *self, PyObject * args) {
 
+	char *name;
+
+	if (!PyArg_ParseTuple(args, "s:create_package", &name)) {
+		return nullptr;
+	}
+
+	UPackage *u_package = (UPackage *)StaticFindObject(nullptr, ANY_PACKAGE, UTF8_TO_TCHAR(name), true);
+	// create a new package if it does not exist
+	if (u_package) {
+		return PyErr_Format(PyExc_Exception, "package %s already exists", TCHAR_TO_UTF8(*u_package->GetPathName()));
+	}
+	u_package = CreatePackage(nullptr, UTF8_TO_TCHAR(name));
+	if (!u_package)
+		return PyErr_Format(PyExc_Exception, "unable to create package");
+	u_package->FileName = *FPackageName::LongPackageNameToFilename(UTF8_TO_TCHAR(name), FPackageName::GetAssetPackageExtension());
+
+	u_package->FullyLoad();
+	u_package->MarkPackageDirty();
+
+	ue_PyUObject *ret = ue_get_python_wrapper(u_package);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
+}
+
+PyObject *py_unreal_engine_get_or_create_package(PyObject *self, PyObject * args) {
+
+	char *name;
+
+	if (!PyArg_ParseTuple(args, "s:get_or_create_package", &name)) {
+		return nullptr;
+	}
+
+	UPackage *u_package = (UPackage *)StaticFindObject(nullptr, ANY_PACKAGE, UTF8_TO_TCHAR(name), true);
+	// create a new package if it does not exist
+	if (!u_package) {
+		u_package = CreatePackage(nullptr, UTF8_TO_TCHAR(name));
+		if (!u_package)
+			return PyErr_Format(PyExc_Exception, "unable to create package");
+		u_package->FileName = *FPackageName::LongPackageNameToFilename(UTF8_TO_TCHAR(name), FPackageName::GetAssetPackageExtension());
+
+		u_package->FullyLoad();
+		u_package->MarkPackageDirty();
+	}
+
+	ue_PyUObject *ret = ue_get_python_wrapper(u_package);
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
+}
+
+PyObject *py_unreal_engine_get_transient_package(PyObject *self, PyObject * args) {
+
+	ue_PyUObject *ret = ue_get_python_wrapper(GetTransientPackage());
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
+}

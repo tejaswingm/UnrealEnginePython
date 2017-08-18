@@ -19,6 +19,46 @@
 #include "Editor/ContentBrowser/Public/IContentBrowserSingleton.h"
 #include "Runtime/Engine/Classes/EdGraph/EdGraphPin.h"
 #include "Runtime/Engine/Classes/EdGraph/EdGraphSchema.h"
+#include "Toolkits/AssetEditorManager.h"
+#include "LevelEditor.h"
+
+
+PyObject *py_unreal_engine_editor_play_in_viewport(PyObject * self, PyObject * args) {
+
+	PyObject *py_vector = nullptr;
+	PyObject *py_rotator = nullptr;
+
+	if (!PyArg_ParseTuple(args, "|OO:editor_play_in_viewport", &py_vector, &py_rotator)) {
+		return NULL;
+	}
+
+	FVector v;
+	FRotator r;
+
+	if (py_vector) {
+		ue_PyFVector *vector = py_ue_is_fvector(py_vector);
+		if (!vector)
+			return PyErr_Format(PyExc_Exception, "argument is not a FVector");
+		v = vector->vec;
+	}
+
+	if (py_rotator) {
+		ue_PyFRotator *rotator = py_ue_is_frotator(py_rotator);
+		if (!rotator)
+			return PyErr_Format(PyExc_Exception, "argument is not a FRotator");
+		r = rotator->rot;
+	}
+
+	FLevelEditorModule &EditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+
+	if (!EditorModule.GetFirstActiveViewport().IsValid())
+		return PyErr_Format(PyExc_Exception, "no active LevelEditor Viewport");
+
+	GEditor->RequestPlaySession(py_vector == nullptr, EditorModule.GetFirstActiveViewport(), true, &v, &r);
+
+	Py_RETURN_NONE;
+
+}
 
 
 PyObject *py_unreal_engine_get_editor_world(PyObject * self, PyObject * args) {
@@ -32,6 +72,23 @@ PyObject *py_unreal_engine_get_editor_world(PyObject * self, PyObject * args) {
 		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
 	Py_INCREF(ret);
 	return (PyObject *)ret;
+}
+
+PyObject *py_unreal_engine_console_exec(PyObject * self, PyObject * args) {
+
+	char *command;
+
+	if (!GEditor)
+		return PyErr_Format(PyExc_Exception, "no GEditor found");
+
+	if (!PyArg_ParseTuple(args, "s:console_exec", &command)) {
+		return NULL;
+	}
+
+	GEditor->Exec(GEditor->GetEditorWorldContext().World(), UTF8_TO_TCHAR(command), *GLog);
+
+	Py_INCREF(Py_None);
+	return Py_None;
 }
 
 PyObject *py_unreal_engine_allow_actor_script_execution_in_editor(PyObject * self, PyObject * args) {
@@ -146,23 +203,38 @@ PyObject *py_unreal_engine_editor_deselect_actors(PyObject * self, PyObject * ar
 
 PyObject *py_unreal_engine_editor_play(PyObject * self, PyObject * args) {
 
-	if (!GEditor)
-		return PyErr_Format(PyExc_Exception, "no GEditor found");
+	PyObject *py_vector = nullptr;
+	PyObject *py_rotator = nullptr;
 
-	PyObject *obj = nullptr;
-	if (!PyArg_ParseTuple(args, "O:editor_play", &obj)) {
+	if (!PyArg_ParseTuple(args, "|OO:editor_play", &py_vector, &py_rotator)) {
 		return NULL;
 	}
 
-	bool pie = true;
+	FVector v;
+	FRotator r;
 
-	if (obj && !PyObject_IsTrue(obj))
-		pie = false;
+	if (py_vector) {
+		ue_PyFVector *vector = py_ue_is_fvector(py_vector);
+		if (!vector)
+			return PyErr_Format(PyExc_Exception, "argument is not a FVector");
+		v = vector->vec;
+	}
 
-	GEditor->PlayInEditor(GEditor->GetEditorWorldContext().World(), pie);
+	if (py_rotator) {
+		ue_PyFRotator *rotator = py_ue_is_frotator(py_rotator);
+		if (!rotator)
+			return PyErr_Format(PyExc_Exception, "argument is not a FRotator");
+		r = rotator->rot;
+	}
 
-	Py_INCREF(Py_None);
-	return Py_None;
+#if ENGINE_MINOR_VERSION >= 17
+	const FString mobile_device;
+	GEditor->RequestPlaySession(&v, &r, false, false, mobile_device);
+#else
+	GEditor->RequestPlaySession(&v, &r, false, false);
+#endif
+	
+	Py_RETURN_NONE;
 }
 
 PyObject *py_unreal_engine_editor_select_actor(PyObject * self, PyObject * args) {
@@ -322,6 +394,18 @@ PyObject *py_unreal_engine_import_asset(PyObject * self, PyObject * args) {
 	return Py_None;
 }
 
+PyObject *py_unreal_engine_editor_tick(PyObject * self, PyObject * args) {
+	float delta_seconds = FApp::GetDeltaTime();
+	PyObject *py_bool = nullptr;
+	if (!PyArg_ParseTuple(args, "|fO:editor_tick", &delta_seconds, &py_bool)) {
+		return NULL;
+	}
+
+	GEditor->Tick(delta_seconds, (py_bool && PyObject_IsTrue(py_bool)) ? true : false);
+
+	Py_RETURN_NONE;
+}
+
 PyObject *py_unreal_engine_message_dialog_open(PyObject * self, PyObject * args) {
 
 	if (!GEditor)
@@ -329,21 +413,40 @@ PyObject *py_unreal_engine_message_dialog_open(PyObject * self, PyObject * args)
 
 	int app_msg_type;
 	char *text;
-	char *title = nullptr;
-	if (!PyArg_ParseTuple(args, "is|s:message_dialog_open", &app_msg_type, &text, &title)) {
+
+	if (!PyArg_ParseTuple(args, "is:message_dialog_open", &app_msg_type, &text)) {
 		return NULL;
 	}
 
-	FText *f_title = nullptr;
-
-	if (title) {
-		FText f_title_value = FText::FromString(UTF8_TO_TCHAR(title));
-		f_title = &f_title_value;
-	}
-
-	EAppReturnType::Type ret = FMessageDialog::Open((EAppMsgType::Type) app_msg_type, FText::FromString(UTF8_TO_TCHAR(text)), f_title);
+	EAppReturnType::Type ret = FMessageDialog::Open((EAppMsgType::Type) app_msg_type, FText::FromString(UTF8_TO_TCHAR(text)));
 
 	return PyLong_FromLong(ret);
+}
+
+PyObject *py_unreal_engine_create_modal_save_asset_dialog(PyObject * self, PyObject * args) {
+
+	char *title = (char *)"";
+	char *path = (char*)"";
+	char *default_name = (char*)"";
+
+	if (!PyArg_ParseTuple(args, "|sss:create_modal_save_asset_dialog", &title, &path, &default_name)) {
+		return nullptr;
+	}
+
+	FSaveAssetDialogConfig config;
+	config.DialogTitleOverride = FText::FromString(FString(UTF8_TO_TCHAR(title)));
+	config.DefaultPath = FString(UTF8_TO_TCHAR(path));
+	config.DefaultAssetName = FString(UTF8_TO_TCHAR(default_name));
+	config.ExistingAssetPolicy = ESaveAssetDialogExistingAssetPolicy::AllowButWarn;
+
+	FContentBrowserModule &ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	FString ret = ContentBrowserModule.Get().CreateModalSaveAssetDialog(config);
+
+	if (ret.IsEmpty()) {
+		Py_RETURN_NONE;
+	}
+
+	return PyUnicode_FromString(TCHAR_TO_UTF8(*ret));
 }
 
 PyObject *py_unreal_engine_get_asset(PyObject * self, PyObject * args) {
@@ -360,6 +463,29 @@ PyObject *py_unreal_engine_get_asset(PyObject * self, PyObject * args) {
 	FAssetData asset = AssetRegistryModule.Get().GetAssetByObjectPath(UTF8_TO_TCHAR(path));
 	if (!asset.IsValid())
 		return PyErr_Format(PyExc_Exception, "unable to find asset %s", path);
+	ue_PyUObject *ret = ue_get_python_wrapper(asset.GetAsset());
+	if (!ret)
+		return PyErr_Format(PyExc_Exception, "PyUObject is in invalid state");
+	Py_INCREF(ret);
+	return (PyObject *)ret;
+}
+
+PyObject *py_unreal_engine_find_asset(PyObject * self, PyObject * args) {
+	char *path;
+
+	if (!PyArg_ParseTuple(args, "s:find_asset", &path)) {
+		return NULL;
+	}
+
+	if (!GEditor)
+		return PyErr_Format(PyExc_Exception, "no GEditor found");
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	FAssetData asset = AssetRegistryModule.Get().GetAssetByObjectPath(UTF8_TO_TCHAR(path));
+	if (!asset.IsValid()) {
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
 	ue_PyUObject *ret = ue_get_python_wrapper(asset.GetAsset());
 	if (!ret)
 		return PyErr_Format(PyExc_Exception, "PyUObject is in invalid state");
@@ -517,8 +643,43 @@ PyObject *py_unreal_engine_delete_asset(PyObject * self, PyObject * args) {
 	TArray<UObject *> objects;
 	objects.Add(u_object);
 
-	if (ObjectTools::ForceDeleteObjects(objects, show_confirmation) < 1) {
-		return PyErr_Format(PyExc_Exception, "unable to delete asset %s", path);
+	if (ObjectTools::DeleteObjects(objects, show_confirmation) < 1) {
+		if (ObjectTools::ForceDeleteObjects(objects, show_confirmation) < 1) {
+			return PyErr_Format(PyExc_Exception, "unable to delete asset %s", path);
+		}
+	}
+
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
+PyObject *py_unreal_engine_delete_object(PyObject * self, PyObject * args) {
+	PyObject *py_obj;
+	PyObject *py_bool = nullptr;
+	if (!PyArg_ParseTuple(args, "O|O:delete_object", &py_obj, &py_bool)) {
+		return NULL;
+	}
+
+	if (!GEditor)
+		return PyErr_Format(PyExc_Exception, "no GEditor found");
+
+	UObject *u_object = ue_py_check_type<UObject>(py_obj);
+	if (!u_object)
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+
+	TArray<UObject *> objects_to_delete;
+	objects_to_delete.Add(u_object);
+
+
+	if (py_bool && PyObject_IsTrue(py_bool)) {
+		if (ObjectTools::ForceDeleteObjects(objects_to_delete, false) < 1) {
+			return PyErr_Format(PyExc_Exception, "unable to delete object");
+		}
+	}
+	else {
+		if (ObjectTools::DeleteObjects(objects_to_delete, false) < 1) {
+			return PyErr_Format(PyExc_Exception, "unable to delete asset");
+		}
 	}
 
 	Py_INCREF(Py_None);
@@ -563,7 +724,7 @@ PyObject *py_unreal_engine_get_assets(PyObject * self, PyObject * args) {
 PyObject *py_unreal_engine_get_assets_by_filter(PyObject * self, PyObject * args, PyObject *kwargs) {
 
 	PyObject *pyfilter;
-	PyObject *py_return_asset_data;
+	PyObject *py_return_asset_data = nullptr;
 
 	static char *kw_names[] = { (char *)"filter", (char *)"return_asset_data", NULL };
 
@@ -593,9 +754,7 @@ PyObject *py_unreal_engine_get_assets_by_filter(PyObject * self, PyObject * args
 			continue;
 		PyObject *ret = nullptr;
 		if (return_asset_data) {
-			// Copy isn't working due to an issue with the TSharedMapView TagsAndValues memory 
-			FAssetData *asset_data = new FAssetData(asset.PackageName, asset.PackagePath, asset.GroupNames, asset.AssetName, asset.AssetClass, asset.TagsAndValues.GetMap(), asset.ChunkIDs, asset.PackageFlags);
-			ret = py_ue_new_fassetdata(asset_data);
+			ret = py_ue_new_fassetdata(asset);
 		}
 		else {
 			ret = (PyObject *)ue_get_python_wrapper(asset.GetAsset());
@@ -718,6 +877,47 @@ PyObject *py_unreal_engine_get_selected_assets(PyObject * self, PyObject * args)
 	return assets_list;
 }
 
+PyObject *py_unreal_engine_open_editor_for_asset(PyObject * self, PyObject * args) {
+	PyObject *py_obj;
+
+	if (!PyArg_ParseTuple(args, "O:open_editor_for_asset", &py_obj)) {
+		return NULL;
+	}
+
+	UObject *u_obj = ue_py_check_type<UObject>(py_obj);
+	if (!u_obj)
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+	if (FAssetEditorManager::Get().OpenEditorForAsset(u_obj)) {
+		Py_INCREF(Py_True);
+		return Py_True;
+	}
+	Py_INCREF(Py_False);
+	return Py_False;
+}
+
+PyObject *py_unreal_engine_close_editor_for_asset(PyObject * self, PyObject * args) {
+	PyObject *py_obj;
+
+	if (!PyArg_ParseTuple(args, "O:close_editor_for_asset", &py_obj)) {
+		return NULL;
+	}
+
+	UObject *u_obj = ue_py_check_type<UObject>(py_obj);
+	if (!u_obj)
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+	FAssetEditorManager::Get().CloseAllEditorsForAsset(u_obj);
+
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
+PyObject *py_unreal_engine_close_all_asset_editors(PyObject * self, PyObject * args) {
+	FAssetEditorManager::Get().CloseAllAssetEditors();
+
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+
 PyObject *py_unreal_engine_set_fbx_import_option(PyObject * self, PyObject * args) {
 	PyObject *obj;
 
@@ -776,11 +976,16 @@ PyObject *py_unreal_engine_create_blueprint(PyObject * self, PyObject * args) {
 	if (!outer)
 		return PyErr_Format(PyExc_Exception, "unable to create package");
 
+	if (FindObject<UBlueprint>(outer, UTF8_TO_TCHAR(bp_name)) != nullptr)
+		return PyErr_Format(PyExc_Exception, "there is already a Blueprint with this name");
+
 	UBlueprint *bp = FKismetEditorUtilities::CreateBlueprint(parent, outer, UTF8_TO_TCHAR(bp_name), EBlueprintType::BPTYPE_Normal, UBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
-	if (bp) {
-		FAssetRegistryModule::AssetCreated(bp);
-		outer->MarkPackageDirty();
-	}
+	if (!bp)
+		return PyErr_Format(PyExc_Exception, "unable to create Blueprint");
+
+	FAssetRegistryModule::AssetCreated(bp);
+	outer->MarkPackageDirty();
+
 
 	ue_PyUObject *ret = ue_get_python_wrapper(bp);
 	if (!ret)
@@ -1004,7 +1209,11 @@ PyObject *py_unreal_engine_blueprint_add_member_variable(PyObject * self, PyObje
 #if ENGINE_MINOR_VERSION > 14
 	FEdGraphPinType pin;
 	pin.PinCategory = UTF8_TO_TCHAR(in_type);
+#if ENGINE_MINOR_VERSION >= 17
+	pin.ContainerType = is_array ? EPinContainerType::Array : EPinContainerType::None;
+#else
 	pin.bIsArray = is_array;
+#endif
 #else
 	FEdGraphPinType pin(UTF8_TO_TCHAR(in_type), FString(""), nullptr, is_array, false);
 #endif
@@ -1453,7 +1662,7 @@ PyObject *py_unreal_engine_add_level_to_world(PyObject *self, PyObject * args) {
 		streaming_mode_class = ULevelStreamingAlwaysLoaded::StaticClass();
 	}
 
-	ULevel *level = EditorLevelUtils::AddLevelToWorld(u_world, UTF8_TO_TCHAR(name), streaming_mode_class);
+	ULevel *level = (ULevel *)EditorLevelUtils::AddLevelToWorld(u_world, UTF8_TO_TCHAR(name), streaming_mode_class);
 	if (level) {
 		// TODO: update levels list
 	}

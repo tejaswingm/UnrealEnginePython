@@ -135,7 +135,7 @@ from unreal_engine.classes import PyFbxFactory
 factory = PyFbxFactory()
 factory.ImportUI.bImportAsSkeletal = True
 
-asset002 = ue.import_asset('/Users/FooBar/Desktop/warrior001.fbx', '/Game/Meshes', factory)
+asset002 = factory.factory_import_object('/Users/FooBar/Desktop/warrior001.fbx', '/Game/Meshes')
 ```
 
 Reimporting assets
@@ -186,6 +186,8 @@ particle_system.save_package('/Game/Funny')
 # this will save material into /Game/Funny.FunnyMaterial
 material.save_package('/Game/Funny')
 ```
+
+Take into account that if you call save_package() on a transient object (read: an object that is marked as not being storable to disk), the object flags will be overwritten to include RF_Public|RF_Standalone, while RF_Transient will be removed
 
 Using a factory allows to create empty assets:
 

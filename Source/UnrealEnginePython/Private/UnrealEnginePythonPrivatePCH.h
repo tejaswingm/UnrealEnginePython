@@ -15,6 +15,7 @@
 
 #include "Runtime/Launch/Resources/Version.h"
 
+
 #if defined(UNREAL_ENGINE_PYTHON_ON_MAC)
 #include <Headers/Python.h>
 #include <Headers/structmember.h>
@@ -27,28 +28,45 @@
 #endif
 
 #include "UEPyModule.h"
-#include "UEPyFVector.h"
-#include "UEPyFHitResult.h"
-#include "UEPyFRotator.h"
-#include "UEPyFTransform.h"
-#include "UEPyFColor.h"
-#include "UEPyFLinearColor.h"
-#include "UEPyFSocket.h"
-#include "UEPyUScriptStruct.h"
-#include "UEPyFRandomStream.h"
+
+#include "Wrappers/UEPyFVector.h"
+#include "Wrappers/UEPyFHitResult.h"
+#include "Wrappers/UEPyFRotator.h"
+#include "Wrappers/UEPyFTransform.h"
+#include "Wrappers/UEPyFColor.h"
+#include "Wrappers/UEPyFLinearColor.h"
+#include "Wrappers/UEPyFSocket.h"
+#include "Wrappers/UEPyFQuat.h"
+
+#include "Wrappers/UEPyFRawAnimSequenceTrack.h"
+
+#include "Wrappers/UEPyFRandomStream.h"
+
+#include "Wrappers/UEPyFPythonOutputDevice.h"
+#include "Wrappers/UEPyFSoftSkinVertex.h"
 
 #include "UEPyCallable.h"
 #include "UEPyUClassesImporter.h"
 #include "UEPyEnumsImporter.h"
 #include "UEPyUStructsImporter.h"
 
+#include "UEPyUScriptStruct.h"
+
 #if WITH_EDITOR
-#include "UEPyFAssetData.h"
-#include "UEPyFARFilter.h"
-#include "UEPyAnimSequence.h"
-#include "UEPyEdGraphPin.h"
+#include "Wrappers/UEPyFAssetData.h"
+#include "Wrappers/UEPyFARFilter.h"
+#include "Wrappers/UEPyFRawMesh.h"
+#include "Wrappers/UEPyFStringAssetReference.h"
+#include "UObject/UEPyAnimSequence.h"
+#include "Blueprint/UEPyEdGraphPin.h"
 #include "UEPyIPlugin.h"
 #endif
+
+#include "Slate/UEPySlate.h"
+#include "Http/UEPyIHttp.h"
+#include "ConsoleManager/UEPyIConsoleManager.h"
+#include "Voice/UEPyIVoiceCapture.h"
+
 
 #define ue_py_check(py_u) if (!py_u->ue_object || !py_u->ue_object->IsValidLowLevel() || py_u->ue_object->IsPendingKillOrUnreachable())\
 							return PyErr_Format(PyExc_Exception, "PyUObject is in invalid state")

@@ -2,8 +2,16 @@
 
 #pragma once
 
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wdelete-non-virtual-dtor"
+#endif
+
 #include "ModuleManager.h"
 #define UEPY_THREADING 1
+
+#include "Engine.h"
+#include "Runtime/SlateCore/Public/Styling/ISlateStyle.h"
+#include "Runtime/SlateCore/Public/Styling/SlateStyle.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogPython, Log, All);
 
@@ -21,7 +29,15 @@ public:
 	void RunString(char *);
 	void RunStringSandboxed(char *);
 	void RunFile(char *);
-	void RunFileSandboxed(char *);
+	void RunFileSandboxed(char *, void(*callback)(void *arg), void *arg);
+
+	void UESetupPythonInterpreter(bool);
+
+	FString ScriptsPath;
+	FString ZipPath;
+	FString AdditionalModulesPath;
+
+	bool BrutalFinalize;
 
 	/**
 	* Singleton-like access to this module's interface.  This is just for convenience!
@@ -55,6 +71,8 @@ private:
 	void *main_dict;
 	void *local_dict;
 	void *main_module;
+
+	TSharedPtr<FSlateStyleSet> StyleSet;
 };
 
 struct FScopePythonGIL {
