@@ -186,7 +186,7 @@ public class UnrealEnginePython : ModuleRules
 
         if ((Target.Platform == UnrealTargetPlatform.Win64) || (Target.Platform == UnrealTargetPlatform.Win32))
         {
-            if(UseThirdPartyPython)
+            if (UseThirdPartyPython)
             {
                 PythonHome = ThirdPartyPythonHome;
 
@@ -250,38 +250,40 @@ public class UnrealEnginePython : ModuleRules
                 PublicLibraryPaths.Add(Path.GetDirectoryName(libPath));
                 PublicDelayLoadDLLs.Add(libPath);
                 Definitions.Add(string.Format("UNREAL_ENGINE_PYTHON_ON_MAC"));
-	        }
-	        else if (Target.Platform == UnrealTargetPlatform.Linux)
-	        {
-	            if (pythonHome == "")
-	            {
-			string includesPath = DiscoverLinuxPythonIncludesPath();
-			if (includesPath == null)
-			{
-				throw new System.Exception("Unable to find Python includes, please add a search path to linuxKnownIncludesPaths");
-			}
-			string libsPath = DiscoverLinuxPythonLibsPath();
-			if (libsPath == null)
-			{
-				throw new System.Exception("Unable to find Python libs, please add a search path to linuxKnownLibsPaths");
-			}
-	                PublicIncludePaths.Add(includesPath);
-	                PublicAdditionalLibraries.Add(libsPath);
-	            }
-	            else
-	            {
-			string []items = pythonHome.Split(';');
-	               	PublicIncludePaths.Add(items[0]);
-	               	PublicAdditionalLibraries.Add(items[1]);
+            }
+            else if (Target.Platform == UnrealTargetPlatform.Linux)
+            {
+                if (PythonHome == "")
+                {
+                    string includesPath = DiscoverLinuxPythonIncludesPath();
+                    if (includesPath == null)
+                    {
+                        throw new System.Exception("Unable to find Python includes, please add a search path to linuxKnownIncludesPaths");
+                    }
+                    string libsPath = DiscoverLinuxPythonLibsPath();
+                    if (libsPath == null)
+                    {
+                        throw new System.Exception("Unable to find Python libs, please add a search path to linuxKnownLibsPaths");
+                    }
+                    PublicIncludePaths.Add(includesPath);
+                    PublicAdditionalLibraries.Add(libsPath);
+                }
+                else
+                {
+                    string[] items = PythonHome.Split(';');
+                    PublicIncludePaths.Add(items[0]);
+                    PublicAdditionalLibraries.Add(items[1]);
+                }
             }
         }
-
-	string enableThreads = System.Environment.GetEnvironmentVariable("UEP_ENABLE_THREADS");
-	if (!string.IsNullOrEmpty(enableThreads)) 
-	{
-		Definitions.Add("UEPY_THREADING");
-            	System.Console.WriteLine("*** Enabled Python Threads support ***");
     }
+
+    /*string enableThreads = System.Environment.GetEnvironmentVariable("UEP_ENABLE_THREADS");
+    if (!string.IsNullOrEmpty(enableThreads))
+    {
+        Definitions.Add("UEPY_THREADING");
+        System.Console.WriteLine("*** Enabled Python Threads support ***");
+    }*/
 
     private string DiscoverPythonPath(string[] knownPaths)
     {
