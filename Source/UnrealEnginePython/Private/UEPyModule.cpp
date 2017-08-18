@@ -35,10 +35,6 @@
 
 
 #include "UEPyAssetUserData.h"
-#include "UEPyTexture.h"
-#include "UEPyMaterial.h"
-#include "UEPyPawn.h"
-#include "UEPyController.h"
 #include "UEPyLambda.h"
 
 #if WITH_EDITOR
