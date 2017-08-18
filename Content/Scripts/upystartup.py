@@ -12,6 +12,14 @@ def checkPipDirectory():
 	configPath = cmd.PythonPluginScriptPath() + '/upyconfig.json'
 	correctPipPath = cmd.PythonHomeScriptsPath()
 
+	#check that we have a config file
+	if not (os.path.exists(configPath)):
+		with open(configPath, "w+") as configFile:
+			configs = {}
+			configs['pipDirectoryPath'] = ""
+			configFile.seek(0)
+			configFile.write(json.dumps(configs))
+
 	#compare our current pip directory with the installed one, if they differ reinstall pip
 	
 	with open(configPath, "r+") as configFile:
