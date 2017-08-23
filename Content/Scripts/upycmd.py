@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+import os
 import unreal_engine as ue
 import _thread as thread
 
@@ -31,6 +32,11 @@ def PythonPluginScriptPath():
 			break
 
 	return tempPath
+
+def PythonProjectScriptPath():
+	relativePath = PythonPluginScriptPath() + "/../../../../Content/Scripts";
+	return os.path.abspath(relativePath);
+
 
 _PythonHomePath = PythonHomePath()
 
