@@ -37,6 +37,8 @@ def PythonProjectScriptPath():
 	relativePath = PythonPluginScriptPath() + "/../../../../Content/Scripts";
 	return os.path.abspath(relativePath);
 
+def AsAbsPath(path):
+	return os.path.abspath(path)
 
 _PythonHomePath = PythonHomePath()
 
