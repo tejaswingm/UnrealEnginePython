@@ -52,6 +52,9 @@ public class UnrealEnginePython : ModuleRules
         "/Library/Frameworks/Python.framework/Versions/3.6",
         "/Library/Frameworks/Python.framework/Versions/3.5",
         "/Library/Frameworks/Python.framework/Versions/2.7",
+        "/System/Library/Frameworks/Python.framework/Versions/3.6",
+        "/System/Library/Frameworks/Python.framework/Versions/3.5",
+        "/System/Library/Frameworks/Python.framework/Versions/2.7"
     };
 
     private string[] linuxKnownIncludesPaths =
@@ -70,26 +73,26 @@ public class UnrealEnginePython : ModuleRules
 
     private string[] linuxKnownLibsPaths =
     {
-	    "/usr/local/lib/libpython3.6.so",
-	    "/usr/local/lib/libpython3.6m.so",
-	    "/usr/local/lib/x86_64-linux-gnu/libpython3.6.so",
-	    "/usr/local/lib/x86_64-linux-gnu/libpython3.6m.so",
-	    "/usr/local/lib/libpython3.5.so",
-	    "/usr/local/lib/libpython3.5m.so",
-	    "/usr/local/lib/x86_64-linux-gnu/libpython3.5.so",
-	    "/usr/local/lib/x86_64-linux-gnu/libpython3.5m.so",
-	    "/usr/local/lib/libpython2.7.so",
-	    "/usr/local/lib/x86_64-linux-gnu/libpython2.7.so",
-	    "/usr/lib/libpython3.6.so",
-	    "/usr/lib/libpython3.6m.so",
-	    "/usr/lib/x86_64-linux-gnu/libpython3.6.so",
-	    "/usr/lib/x86_64-linux-gnu/libpython3.6m.so",
-	    "/usr/lib/libpython3.5.so",
-	    "/usr/lib/libpython3.5m.so",
-	    "/usr/lib/x86_64-linux-gnu/libpython3.5.so",
-	    "/usr/lib/x86_64-linux-gnu/libpython3.5m.so",
-	    "/usr/lib/libpython2.7.so",
-	    "/usr/lib/x86_64-linux-gnu/libpython2.7.so",
+        "/usr/local/lib/libpython3.6.so",
+        "/usr/local/lib/libpython3.6m.so",
+        "/usr/local/lib/x86_64-linux-gnu/libpython3.6.so",
+        "/usr/local/lib/x86_64-linux-gnu/libpython3.6m.so",
+        "/usr/local/lib/libpython3.5.so",
+        "/usr/local/lib/libpython3.5m.so",
+        "/usr/local/lib/x86_64-linux-gnu/libpython3.5.so",
+        "/usr/local/lib/x86_64-linux-gnu/libpython3.5m.so",
+        "/usr/local/lib/libpython2.7.so",
+        "/usr/local/lib/x86_64-linux-gnu/libpython2.7.so",
+        "/usr/lib/libpython3.6.so",
+        "/usr/lib/libpython3.6m.so",
+        "/usr/lib/x86_64-linux-gnu/libpython3.6.so",
+        "/usr/lib/x86_64-linux-gnu/libpython3.6m.so",
+        "/usr/lib/libpython3.5.so",
+        "/usr/lib/libpython3.5m.so",
+        "/usr/lib/x86_64-linux-gnu/libpython3.5.so",
+        "/usr/lib/x86_64-linux-gnu/libpython3.5m.so",
+        "/usr/lib/libpython2.7.so",
+        "/usr/lib/x86_64-linux-gnu/libpython2.7.so",
     };
 
 #if WITH_FORWARDED_MODULE_RULES_CTOR
@@ -144,7 +147,8 @@ public class UnrealEnginePython : ModuleRules
                 "RHI",
                 "Voice",
                 "RenderCore",
-                "MovieSceneCapture"
+                "MovieSceneCapture",
+                "Landscape"
 				// ... add private dependencies that you statically link with here ...
 			}
             );
@@ -181,7 +185,8 @@ public class UnrealEnginePython : ModuleRules
                 "EditorWidgets",
                 "FBX",
                 "Persona",
-                "PropertyEditor"
+                "PropertyEditor",
+                "LandscapeEditor"
             });
         }
 
@@ -231,60 +236,34 @@ public class UnrealEnginePython : ModuleRules
             }
             else if (Target.Platform == UnrealTargetPlatform.Mac)
             {
-                if (PythonType == "Python35")
+                string includesPath = DiscoverLinuxPythonIncludesPath();
+                if (includesPath == null)
                 {
-                    string mac_python = "/Library/Frameworks/Python.framework/Versions/3.5/";
-                    PublicIncludePaths.Add(Path.Combine(mac_python, "include"));
-                    PublicAdditionalLibraries.Add(Path.Combine(mac_python, "lib", "libpython3.5m.dylib"));
-                    Definitions.Add(string.Format("UNREAL_ENGINE_PYTHON_ON_MAC=3"));
+                    throw new System.Exception("Unable to find Python includes, please add a search path to linuxKnownIncludesPaths");
                 }
-                else if (PythonType == "Python27")
+                string libsPath = DiscoverLinuxPythonLibsPath();
+                if (libsPath == null)
                 {
-                    string mac_python = "/Library/Frameworks/Python.framework/Versions/2.7/";
-                    PublicIncludePaths.Add(Path.Combine(mac_python, "include"));
-                    PublicAdditionalLibraries.Add(Path.Combine(mac_python, "lib", "libpython2.7.dylib"));
-                    Definitions.Add(string.Format("UNREAL_ENGINE_PYTHON_ON_MAC=2"));
+                    throw new System.Exception("Unable to find Python libs, please add a search path to linuxKnownLibsPaths");
                 }
-                System.Console.WriteLine("Using Python at: " + PythonHome);
-                PublicIncludePaths.Add(PythonHome);
-                string libPath = GetMacPythonLibFile(PythonHome);
-                PublicLibraryPaths.Add(Path.GetDirectoryName(libPath));
-                PublicDelayLoadDLLs.Add(libPath);
-                Definitions.Add(string.Format("UNREAL_ENGINE_PYTHON_ON_MAC"));
+                PublicIncludePaths.Add(includesPath);
+                PublicAdditionalLibraries.Add(libsPath);
             }
             else if (Target.Platform == UnrealTargetPlatform.Linux)
             {
-                if (PythonHome == "")
-                {
-                    string includesPath = DiscoverLinuxPythonIncludesPath();
-                    if (includesPath == null)
-                    {
-                        throw new System.Exception("Unable to find Python includes, please add a search path to linuxKnownIncludesPaths");
-                    }
-                    string libsPath = DiscoverLinuxPythonLibsPath();
-                    if (libsPath == null)
-                    {
-                        throw new System.Exception("Unable to find Python libs, please add a search path to linuxKnownLibsPaths");
-                    }
-                    PublicIncludePaths.Add(includesPath);
-                    PublicAdditionalLibraries.Add(libsPath);
-                }
-                else
-                {
-                    string[] items = PythonHome.Split(';');
-                    PublicIncludePaths.Add(items[0]);
-                    PublicAdditionalLibraries.Add(items[1]);
-                }
+                string[] items = pythonHome.Split(';');
+                PublicIncludePaths.Add(items[0]);
+                PublicAdditionalLibraries.Add(items[1]);
             }
         }
-    }
 
-    /*string enableThreads = System.Environment.GetEnvironmentVariable("UEP_ENABLE_THREADS");
-    if (!string.IsNullOrEmpty(enableThreads))
-    {
-        Definitions.Add("UEPY_THREADING");
-        System.Console.WriteLine("*** Enabled Python Threads support ***");
-    }*/
+        /*string enableThreads = System.Environment.GetEnvironmentVariable("UEP_ENABLE_THREADS");
+        if (!string.IsNullOrEmpty(enableThreads))
+        {
+            Definitions.Add("UEPY_THREADING");
+            System.Console.WriteLine("*** Enabled Python Threads support ***");
+        }*/
+    }
 
     private string DiscoverPythonPath(string[] knownPaths)
     {

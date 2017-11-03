@@ -7,6 +7,12 @@
 #include "ClassIconFinder.h"
 #endif
 
+#if ENGINE_MINOR_VERSION >= 18
+#define PROJECT_CONTENT_DIR FPaths::ProjectContentDir()
+#else
+#define PROJECT_CONTENT_DIR FPaths::GameContentDir()
+#endif
+
 void unreal_engine_init_py_module();
 
 #if defined(UNREAL_ENGINE_PYTHON_ON_LINUX)
@@ -177,7 +183,7 @@ void FUnrealEnginePythonModule::StartupModule()
 	}
 
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeHome"), IniValue, GEngineIni)) {
-		IniValue = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+		IniValue = FPaths::Combine(*PROJECT_CONTENT_DIR, *IniValue);
 #if PY_MAJOR_VERSION >= 3
 		wchar_t *home = (wchar_t *)*IniValue;
 #else
@@ -196,7 +202,7 @@ void FUnrealEnginePythonModule::StartupModule()
 	}
 
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeProgramName"), IniValue, GEngineIni)) {
-		IniValue = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+		IniValue = FPaths::Combine(*PROJECT_CONTENT_DIR, *IniValue);
 #if PY_MAJOR_VERSION >= 3
 		wchar_t *program_name = (wchar_t *)*IniValue;
 #else
@@ -210,7 +216,7 @@ void FUnrealEnginePythonModule::StartupModule()
 	}
 
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeScriptsPath"), IniValue, GEngineIni)) {
-		ScriptsPath = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+		ScriptsPath = FPaths::Combine(*PROJECT_CONTENT_DIR, *IniValue);
 	}
 
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("AdditionalModulesPath"), IniValue, GEngineIni)) {
@@ -218,7 +224,7 @@ void FUnrealEnginePythonModule::StartupModule()
 	}
 
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeAdditionalModulesPath"), IniValue, GEngineIni)) {
-		AdditionalModulesPath = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+		AdditionalModulesPath = FPaths::Combine(*PROJECT_CONTENT_DIR, *IniValue);
 	}
 
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("ZipPath"), IniValue, GEngineIni)) {
@@ -226,15 +232,15 @@ void FUnrealEnginePythonModule::StartupModule()
 	}
 
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeZipPath"), IniValue, GEngineIni)) {
-		ZipPath = FPaths::Combine(*FPaths::GameContentDir(), *IniValue);
+		ZipPath = FPaths::Combine(*PROJECT_CONTENT_DIR, *IniValue);
 	}
 
 	if (ScriptsPath.IsEmpty()) {
-		ScriptsPath = FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("Scripts"));
+		ScriptsPath = FPaths::Combine(*PROJECT_CONTENT_DIR, UTF8_TO_TCHAR("Scripts"));
 	}
 
 	if (ZipPath.IsEmpty()) {
-		ZipPath = FPaths::Combine(*FPaths::GameContentDir(), UTF8_TO_TCHAR("ue_python.zip"));
+		ZipPath = FPaths::Combine(*PROJECT_CONTENT_DIR, UTF8_TO_TCHAR("ue_python.zip"));
 	}
 
 	if (!FPaths::DirectoryExists(ScriptsPath)) {

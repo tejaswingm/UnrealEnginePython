@@ -286,7 +286,7 @@ In the screenshot you can note how highlighting a specific material slot will re
 
 ## Skeleton: Building a new tree
 
-A Skeleton is an asset describing the tree of bones that influences a SkeletalMesh. While building a new skeleton (or adding a bone to it) is pretty easy, modifying or destroying a skeleton is always a risky operation. You should always generate a new Skeleton and the related SkeletalMesh whenever you need to change the bones tree.
+A Skeleton is an asset describing the tree of bones that influence a SkeletalMesh. While building a new skeleton (or adding a bone to it) is pretty easy, modifying or destroying a skeleton is always a risky operation. You should always generate a new Skeleton and the related SkeletalMesh whenever you need to change the bones tree.
 
 In this example we create a simple skeleton:
 
@@ -911,6 +911,7 @@ class ColladaLoader:
         transform.translation = FVector(v0.z, v0.x, v0.y) * self.base_quaternion
         transform.quaternion = FQuat(q0[2], q0[0] * -1, q0[1] * -1, q0[3])
 
+        # each bone in collada is in world position (while unreal wants relative positions), we 'subtract' here the parent position
         relative_transform = transform * parent_transform.inverse()
         
         parent_id = self.skeleton.skeleton_add_bone(node.id, parent_id, relative_transform)
@@ -1017,6 +1018,8 @@ If all goes well you wll end with your model correctly loaded (the screenshot sh
 
 ![Collada](https://github.com/20tab/UnrealEnginePython/blob/master/tutorials/SnippetsForStaticAndSkeletalMeshes_Assets/collada.PNG)
 
+As you could have already noted in the comments, joints/bones matrices in collada files are world-relative, while UE4 expects each bone to be relative to the parent. For this reason we multiply each matrix for the inverse of its parent.
+
 ## SkeletalMesh: Morph Targets
 
 Morph Targets (or Blend Shapes), are a simple form of animation where a specific vertex (and eventually its normal) is translated to a new position. By interpolating the transition from the default position to the new one defined by the morph target, you can generate an animation. Morph Targets are common in facial animations or, more generally, whenever an object must be heavily deformed.
@@ -1098,7 +1101,7 @@ Pay attention to the 'delta.source_idx' value as on bigger meshes it could not m
 
 ## Animations: Root Motion from SVG path
 
-This funny example build an animation from an SVG file.
+This funny example builds an animation from an SVG file.
 
 The animation will only contain a motion track (for the root bone) and will set keys based on the first path curve found in a SVG file.
 
@@ -1265,3 +1268,110 @@ Remember, you can use the same approach with quaternions, but NOT with rotators 
 ## Animations: Getting curves from BVH files
 
 BVH files are interesting for lot of reasons. First of all, BVH is basically the de-facto standard for motion capture devices. It is a textual human-readable format. And, maybe more important for this page, will heavily push your linear-algebra skills...
+
+The BVH specs are described in this old document: https://research.cs.wisc.edu/graphics/Courses/cs-838-1999/Jeff/BVH.html
+
+Lucky enough, here in 20tab we built a python module for parsing bvh files: https://github.com/20tab/bvh-python
+
+```
+pip install bvh
+```
+
+It is a simple parser that returns simple float lists/tuples that we can use to build vectors and quaternions.
+
+BVH files only contain a skeleton definition (by specifying joint positions) and an animation.
+
+This script will parse a bvh file and will return a transient skeleton (with an empty skeletal mesh associated) and an animation:
+
+```python
+import unreal_engine as ue
+from unreal_engine.classes import Skeleton, SkeletalMesh, AnimSequence
+from unreal_engine import FTransform, FVector, FRotator, FQuat, FRawAnimSequenceTrack
+
+from bvh import Bvh
+
+filename = ue.open_file_dialog('Choose your bvh file', '', '', 'Mocap BVH files|*.bvh;')[0]
+
+with open(filename) as f:
+    mocap = Bvh(f.read())
+
+skeleton = Skeleton()
+
+for joint_name in mocap.get_joints_names():
+    offset = mocap.joint_offset(joint_name)
+    parent_id = mocap.joint_parent_index(joint_name)
+    # fix z value by inverting it, it will avoid left/right bone name mismatching
+    position = FVector(*offset) * FVector(1, 1, -1)
+    skeleton.skeleton_add_bone(joint_name, parent_id, FTransform(position))
+
+mesh = SkeletalMesh()
+mesh.skeletal_mesh_set_skeleton(skeleton)
+
+# build an empty LOD, this is the minimal required to see bones
+# in the editor
+mesh.skeletal_mesh_build_lod([])
+
+anim = AnimSequence()
+anim.Skeleton = skeleton
+anim.NumFrames = mocap.nframes
+anim.SequenceLength = mocap.frame_time * mocap.nframes
+
+# iterate each skeleton joint and create a track for each one
+for joint_id, joint_name in enumerate(mocap.get_joints_names()):
+    track = FRawAnimSequenceTrack()
+    bone_transform = skeleton.skeleton_get_ref_bone_pose(joint_id)
+    pos_keys = []
+    rot_keys = []
+    # the python bvh module allows us to choose in which order we want channels
+    rotations = mocap.frames_joint_channels(joint_name, ('Xrotation', 'Yrotation', 'Zrotation'))
+    positions = []
+
+    # get root motion data for first bone
+    if joint_id == 0:
+        positions = mocap.frames_joint_channels(joint_name, ('Xposition', 'Yposition', 'Zposition'), 0)
+   
+    # quaternions do not suffer from gimbal lock as we can choose the rotation order
+    for rotation in rotations:
+        # BVH uses the ZXY rotation order (roll, pitch, yaw)
+        roll = FRotator(rotation[0], 0, 0).quaternion()
+        pitch = FRotator(0, rotation[1], 0).quaternion()
+        yaw = FRotator(0, 0, rotation[2]).quaternion()
+        # remember that quaternion multiplications are applied in the reverse
+        q = yaw * pitch * roll
+
+        # as we did not fix the bones axis, we rotate the root one accordingly
+        if joint_id == 0:
+            q = FRotator(-90, 0, 0).quaternion() * q
+
+        rot_keys.append(q)
+
+    # remember to always add the bind pose position to the animation track
+    for position in positions:
+        pos_keys.append(bone_transform.translation + FVector(position[0], position[2], position[1]))
+
+    if not pos_keys:
+        pos_keys = [bone_transform.translation]
+
+    track.pos_keys = pos_keys
+    track.rot_keys = rot_keys
+    anim.add_new_raw_track(joint_name, track)
+
+ue.open_editor_for_asset(anim)
+```
+
+Again, dealing with different convention here is the most complex part. In this example we do not swap axis, instead we rotate the root bone in the animation itelf:
+
+![BVH](https://github.com/20tab/UnrealEnginePython/blob/master/tutorials/SnippetsForStaticAndSkeletalMeshes_Assets/bvh.PNG)
+
+
+## Final Notes
+
+The following two tutorials are good companions for the snippets:
+
+https://github.com/20tab/UnrealEnginePython/blob/master/tutorials/FixingMixamoRootMotionWithPython.md (for fixing Mixamo root motion)
+
+https://github.com/20tab/UnrealEnginePython/blob/master/tutorials/WritingAColladaFactoryWithPython.md (Collada StaticMesh importer)
+
+Most of the snippets work on the currently selected asset/actors. Feel free to associate them to a context menu or an asset loader.
+
+If you have a cool snippet that you want to share, just make a pull request !

@@ -30,12 +30,16 @@ PyObject *py_unreal_engine_load_enum(PyObject *, PyObject *);
 PyObject *py_unreal_engine_load_package(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_string_to_guid(PyObject *, PyObject *);
+PyObject *py_unreal_engine_new_guid(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_engine_tick(PyObject *, PyObject *);
 PyObject *py_unreal_engine_slate_tick(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_delta_time(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_all_classes(PyObject *, PyObject *);
+
+PyObject *py_unreal_engine_all_worlds(PyObject *, PyObject *);
+PyObject *py_unreal_engine_tobject_iterator(PyObject *, PyObject *);
 
 
 PyObject *py_unreal_engine_new_object(PyObject *, PyObject *);
@@ -64,6 +68,8 @@ PyObject *py_unreal_engine_open_file_dialog(PyObject *, PyObject *);
 PyObject *py_unreal_engine_open_font_dialog(PyObject *, PyObject *);
 PyObject *py_unreal_engine_open_directory_dialog(PyObject *, PyObject *);
 PyObject *py_unreal_engine_save_file_dialog(PyObject *, PyObject *);
+
+PyObject *py_unreal_engine_copy_properties_for_unrelated_objects(PyObject *, PyObject *, PyObject *);
 
 #if WITH_EDITOR
 PyObject *py_unreal_engine_editor_get_active_viewport_screenshot(PyObject *, PyObject *);
