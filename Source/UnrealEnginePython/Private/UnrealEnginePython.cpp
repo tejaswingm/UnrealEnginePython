@@ -88,11 +88,11 @@ void FUnrealEnginePythonModule::UESetupPythonInterpreter(bool verbose) {
 
 	PyObject *py_path = PyDict_GetItemString(py_sys_dict, "path");
 
-	char *zip_path = TCHAR_TO_UTF8(*FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::GameContentDir(), FString("ue_python.zip"))));
+	char *zip_path = TCHAR_TO_UTF8(*FPaths::ConvertRelativePathToFull(FPaths::Combine(PROJECT_CONTENT_DIR, FString("ue_python.zip"))));
 	PyObject *py_zip_path = PyUnicode_FromString(zip_path);
 	PyList_Insert(py_path, 0, py_zip_path);
 
-	char *scripts_path = TCHAR_TO_UTF8(*FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::GameContentDir(), FString("Scripts"))));
+	char *scripts_path = TCHAR_TO_UTF8(*FPaths::ConvertRelativePathToFull(FPaths::Combine(PROJECT_CONTENT_DIR, FString("Scripts"))));
 	PyObject *py_scripts_path = PyUnicode_FromString(scripts_path);
 	PyList_Insert(py_path, 0, py_scripts_path);
 
@@ -103,7 +103,7 @@ void FUnrealEnginePythonModule::UESetupPythonInterpreter(bool verbose) {
 	PyList_Insert(py_path, 0, py_plugin_scripts_path);
 
 	/* add the plugin paths - windows only */
-	FString PythonHome = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::GamePluginsDir(), FString("UnrealEnginePython/Binaries/Win64")));
+	FString PythonHome = FPaths::ConvertRelativePathToFull(FPaths::Combine(PROJECT_CONTENT_DIR, FString("UnrealEnginePython/Binaries/Win64")));
 	char *python_path = TCHAR_TO_UTF8(*PythonHome);
 	char *site_path = TCHAR_TO_UTF8(*FPaths::Combine(FString(PythonHome), FString("Lib/site-packages")));
 	PyList_Insert(py_path, 0, PyUnicode_FromString(python_path));

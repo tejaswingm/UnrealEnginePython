@@ -251,7 +251,7 @@ public class UnrealEnginePython : ModuleRules
             }
             else if (Target.Platform == UnrealTargetPlatform.Linux)
             {
-                string[] items = pythonHome.Split(';');
+                string[] items = PythonHome.Split(';');
                 PublicIncludePaths.Add(items[0]);
                 PublicAdditionalLibraries.Add(items[1]);
             }
