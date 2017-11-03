@@ -55,7 +55,8 @@
 #include "UEPySColorBlock.h"
 #include "UEPySBox.h"
 #include "UEPySProgressBar.h"
-
+#include "UEPySSpacer.h"
+#include "UEPySPythonWidget.h"
 
 #include "UEPyFTabManager.h"
 #include "UEPyFTabSpawnerEntry.h"
@@ -66,6 +67,10 @@
 
 #include "UEPyFGeometry.h"
 #include "UEPyFPaintContext.h"
+
+#include "UEPyFInputEvent.h"
+#include "UEPyFPointerEvent.h"
+#include "UEPyFKeyEvent.h"
 
 #if WITH_EDITOR
 #include "UEPySEditorViewport.h"

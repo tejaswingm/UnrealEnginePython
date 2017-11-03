@@ -65,6 +65,9 @@ public:
 
 	void AddPythonDependentPlugin(const FString& PluginName);
 
+	// pep8ize a string using various strategy (currently only autopep8 is supported)
+	FString Pep8ize(FString Code);
+
 private:
 	void *ue_python_gil;
 	// used by console
