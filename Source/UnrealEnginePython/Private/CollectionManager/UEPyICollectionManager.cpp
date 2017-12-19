@@ -59,8 +59,8 @@ static PyObject *py_ue_icollection_manager_get_child_collection_names(PyObject *
 	ICollectionManager &CollectionManager = FCollectionManagerModule::GetModule().Get();
 	TArray<FName> names;
 	CollectionManager.GetChildCollectionNames(FName(UTF8_TO_TCHAR(name)), (ECollectionShareType::Type)type, (ECollectionShareType::Type)child_type, names);
-	for (FName name : names) {
-		PyList_Append(py_list, PyUnicode_FromString(TCHAR_TO_UTF8(*name.ToString())));
+	for (FName cname : names) {
+		PyList_Append(py_list, PyUnicode_FromString(TCHAR_TO_UTF8(*cname.ToString())));
 	}
 	return py_list;
 }
@@ -463,7 +463,7 @@ static PyMethodDef ue_PyICollectionManager_methods[] = {
 	{ "rename_collection", (PyCFunction)py_ue_icollection_manager_rename_collection, METH_VARARGS | METH_CLASS, "" },
 	{ "add_to_collection", (PyCFunction)py_ue_icollection_manager_add_to_collection, METH_VARARGS | METH_CLASS, "" },
 	{ "collection_exists", (PyCFunction)py_ue_icollection_manager_collection_exists, METH_VARARGS | METH_CLASS, "" },
-	{ "create_unique_connection_name", (PyCFunction)py_ue_icollection_manager_create_unique_collection_name, METH_VARARGS | METH_CLASS, "" },
+	{ "create_unique_collection_name", (PyCFunction)py_ue_icollection_manager_create_unique_collection_name, METH_VARARGS | METH_CLASS, "" },
 	{ "destroy_collection", (PyCFunction)py_ue_icollection_manager_destroy_collection, METH_VARARGS | METH_CLASS, "" },
 	{ "empty_collection", (PyCFunction)py_ue_icollection_manager_empty_collection, METH_VARARGS | METH_CLASS, "" },
 	{ "get_dynamic_query_text", (PyCFunction)py_ue_icollection_manager_get_dynamic_query_text, METH_VARARGS | METH_CLASS, "" },
