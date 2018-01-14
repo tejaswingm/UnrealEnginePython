@@ -103,7 +103,7 @@ void FUnrealEnginePythonModule::UESetupPythonInterpreter(bool verbose) {
 	PyList_Insert(py_path, 0, py_plugin_scripts_path);
 
 	/* add the plugin paths - windows only */
-	FString PythonHome = FPaths::ConvertRelativePathToFull(FPaths::Combine(PROJECT_CONTENT_DIR, FString("UnrealEnginePython/Binaries/Win64")));
+	FString PythonHome = FPaths::ConvertRelativePathToFull(FPaths::Combine(PluginRoot, FString("Binaries/Win64")));
 	char *python_path = TCHAR_TO_UTF8(*PythonHome);
 	char *site_path = TCHAR_TO_UTF8(*FPaths::Combine(FString(PythonHome), FString("Lib/site-packages")));
 	PyList_Insert(py_path, 0, PyUnicode_FromString(python_path));
