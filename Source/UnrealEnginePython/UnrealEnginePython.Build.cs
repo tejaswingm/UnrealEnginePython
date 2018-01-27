@@ -30,13 +30,18 @@ public class UnrealEnginePython : ModuleRules
     //private string pythonHome = "/usr/local/include/python3.6;/usr/local/lib/libpython3.6.so"
 
     //Swap python versions here
-    private string PythonType = "Python35";
+    private string PythonType = "Python36";
     //private string PythonType = "python27";
 
     private string ThirdPartyPath
     {
         get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../../ThirdParty/")); }
     }
+
+	private string BinariesPath
+	{
+		get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../../Binaries/")); }
+	}
 
 
     private string[] windowsKnownPaths =
@@ -203,7 +208,10 @@ public class UnrealEnginePython : ModuleRules
                 System.Console.WriteLine("full lib path: " + libPath);
                 PublicLibraryPaths.Add(Path.GetDirectoryName(libPath));
                 PublicAdditionalLibraries.Add(libPath);
-            }
+
+				string dllPath = Path.Combine(BinariesPath, "Win64", string.Format("{0}.dll", PythonType.ToLower()));
+				RuntimeDependencies.Add(new RuntimeDependency(dllPath));
+			}
             else if (PythonHome == "")
             {
                 PythonHome = DiscoverPythonPath(windowsKnownPaths);
