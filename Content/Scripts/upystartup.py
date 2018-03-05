@@ -8,7 +8,7 @@ from os import path as ospath
 import imp
 import site
 
-from upypip import pip
+import upypip as pip
 
 def checkPipDirectory():
 	#get our python scripts path

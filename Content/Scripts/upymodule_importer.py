@@ -13,7 +13,7 @@ import upypip
 import upycmd
 import imp
 import site
-pip = upypip.pip
+pip = upypip
 
 #parse upymodule.json from path and install dependencies if missing
 def parseJson(packagePath):

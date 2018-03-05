@@ -74,4 +74,13 @@ class PipInstall:
 		t = Thread(target=action, args=('freeze','> unins && pip uninstall -y -r unins && del unins',))
 		t.start()
 
-pip = PipInstall()
+#instance forward declarations
+_inst = PipInstall()
+
+list = _inst.list
+isInstalled = _inst.isInstalled
+install = _inst.install
+uninstall = _inst.uninstall
+uninstallAll = _inst.uninstallAll
+pipModuleAction = _inst.pipModuleAction
+listDict = _inst.listDict
