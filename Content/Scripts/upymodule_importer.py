@@ -10,10 +10,15 @@ import unreal_engine as ue
 import json
 
 import upypip
+import upycmd
+import imp
+import site
 pip = upypip.pip
 
 #parse upymodule.json from path and install dependencies if missing
 def parseJson(packagePath):
+	#we may have added paths, normalize them
+	imp.reload(site)
 
 	try:
 		with open(packagePath) as data_file:

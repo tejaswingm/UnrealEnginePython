@@ -76,7 +76,7 @@ def checkPipDirectory():
 			configFile.write(json.dumps(configs))
 			configFile.truncate()
 
-			#reload site
+			#reload site, this will also normalize paths
 			imp.reload(site)
 
 			#done
@@ -84,6 +84,10 @@ def checkPipDirectory():
 
 		else:
 			print('upystartup::pip location is up to date.')
+
+	#for all cases ensure we have normalized paths
+	print('upystartup::system paths normalized.')
+	cmd.NormalizePaths();
 
 #add any startup action you wish to perform in python
 def startup():

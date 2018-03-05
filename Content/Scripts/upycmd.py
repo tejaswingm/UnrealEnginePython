@@ -7,31 +7,48 @@ import unreal_engine as ue
 import _thread as thread
 
 #ue.log(sys.path)
+_problemPaths = ['']
+
+def NormalizePaths():
+	problemPaths = _problemPaths
+
+	#replace '/' to '\\'
+	for i in range(len(sys.path)):
+		currentPath = sys.path[i]
+		sys.path[i] = currentPath.replace('/','\\')
+
+		#find additional problem paths such as engine bin
+		currentPath = sys.path[i]
+		if('Engine' in currentPath and 'Epic Games' in currentPath):
+			_problemPaths.append(currentPath)
+
+	#cleanup
+	for path in problemPaths:
+		if path in sys.path:
+			sys.path.remove(path)
 
 #define some convenience paths
 def PythonHomePath():
 	for path in sys.path:
-		if ('UnrealEnginePython' in path and
-			path.endswith('Binaries/Win64')):
+		normalizedPath = path.replace('/','\\')
+		if ('UnrealEnginePython' in normalizedPath and
+			normalizedPath.endswith('Binaries\\Win64')):
 			return path
 	
 	#return sys.path[1]
 	return "not found"
 
 def PythonHomeScriptsPath():
-	home = PythonHomePath()
-	return home + "/Scripts"
+	return PythonHomePath() + "/Scripts"
 
 def PythonPluginScriptPath():
-	tempPath = "not found"
-
 	for path in sys.path:
-		if ('UnrealEnginePython' in path and
-			path.endswith('Content/Scripts')):
-			tempPath = path
-			break
+		normalizedPath = path.replace('/','\\')
+		if ('UnrealEnginePython' in normalizedPath and
+			normalizedPath.endswith('Content\\Scripts')):
+			return path
 
-	return tempPath
+	return "not found"
 
 def PythonProjectScriptPath():
 	relativePath = PythonPluginScriptPath() + "/../../../../Content/Scripts";
