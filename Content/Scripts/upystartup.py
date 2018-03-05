@@ -5,6 +5,8 @@ import upycmd as cmd
 import os
 from os import listdir
 from os import path as ospath
+import imp
+import site
 
 from upypip import pip
 
@@ -60,7 +62,7 @@ def checkPipDirectory():
 
 			else:
 				#site path doesn't even exist
-				print("Lib/site-packages misssing, re-installing pip.")
+				print("Lib/site-packages missing, re-installing pip.")
 			
 			#install pip
 			print(cmd.PythonHomePath() + '/get-pip.py')
@@ -73,6 +75,9 @@ def checkPipDirectory():
 			configFile.seek(0)
 			configFile.write(json.dumps(configs))
 			configFile.truncate()
+
+			#reload site
+			imp.reload(site)
 
 			#done
 			print('upystartup::updated pip.exe location in <' + configPath + '>')
