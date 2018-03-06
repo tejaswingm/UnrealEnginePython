@@ -15,7 +15,7 @@ def NormalizePaths():
 	#replace '/' to '\\'
 	for i in range(len(sys.path)):
 		currentPath = sys.path[i]
-		sys.path[i] = currentPath.replace('/','\\')
+		sys.path[i] = currentPath.replace('\\','/')
 
 		#find additional problem paths such as engine bin
 		currentPath = sys.path[i]
@@ -30,32 +30,32 @@ def NormalizePaths():
 #define some convenience paths
 def PythonHomePath():
 	for path in sys.path:
-		normalizedPath = path.replace('/','\\')
+		normalizedPath = AsAbsPath(path)
 		if ('UnrealEnginePython' in normalizedPath and
-			normalizedPath.endswith('Binaries\\Win64')):
+			normalizedPath.endswith('Binaries/Win64')):
 			return path
 	
 	#return sys.path[1]
 	return "not found"
 
 def PythonHomeScriptsPath():
-	return PythonHomePath() + "/Scripts"
+	return AsAbsPath(PythonHomePath() + "/Scripts")
 
 def PythonPluginScriptPath():
 	for path in sys.path:
-		normalizedPath = path.replace('/','\\')
+		normalizedPath = AsAbsPath(path)
 		if ('UnrealEnginePython' in normalizedPath and
-			normalizedPath.endswith('Content\\Scripts')):
+			normalizedPath.endswith('Content/Scripts')):
 			return path
 
 	return "not found"
 
 def PythonProjectScriptPath():
 	relativePath = PythonPluginScriptPath() + "/../../../../Content/Scripts";
-	return os.path.abspath(relativePath);
+	return AsAbsPath(relativePath);
 
 def AsAbsPath(path):
-	return os.path.abspath(path)
+	return os.path.abspath(path).replace('\\','/')
 
 _PythonHomePath = PythonHomePath()
 

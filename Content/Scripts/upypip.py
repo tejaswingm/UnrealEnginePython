@@ -37,6 +37,8 @@ class PipInstall:
 		return LooseVersion(desired) <= LooseVersion(current)
 
 	def isInstalled(self, module, desiredVersion=None):
+		if desiredVersion == 'latest':
+			desiredVersion = None
 		if PipInstall.modules == None:
 			PipInstall.modules = self.listDict(False)
 		if module in PipInstall.modules:
