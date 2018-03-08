@@ -12,8 +12,11 @@ class PipInstall:
 		return None
 
 	#blocking actions, should be run on off-thread
-	def pipModuleAction(self, command, args, verbose=True):
-		return cmd.run('pip ' + command + ' ' + args, cmd.PythonHomeScriptsPath(), verbose)
+	def pipModuleAction(self, command, args=None, verbose=True):
+		if args:
+			return cmd.run('pip ' + command + ' ' + args, cmd.PythonHomeScriptsPath(), verbose)
+		else:
+			return cmd.run('pip ' + command, cmd.PythonHomeScriptsPath(), verbose)
 
 	#use this if you need to work on the resulting list to query current dependencies
 	def listDict(self, verbose=True):
@@ -70,6 +73,11 @@ class PipInstall:
 		t = Thread(target=action)
 		t.start()
 
+	def action(self, command):
+		action = self.pipModuleAction
+		t = Thread(target=action, args=(command,))
+		t.start()
+
 	def uninstallAll(self):
 		PipInstall.modules = None #our cache is no longer valid
 		action = self.pipModuleAction
@@ -86,3 +94,4 @@ uninstall = _inst.uninstall
 uninstallAll = _inst.uninstallAll
 pipModuleAction = _inst.pipModuleAction
 listDict = _inst.listDict
+action = _inst.action
