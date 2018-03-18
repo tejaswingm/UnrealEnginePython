@@ -7,12 +7,13 @@ from os import listdir
 from os import path as ospath
 import imp
 import site
+import upymodule_importer as upymod
 
 import upypip as pip
 
 def checkPipDirectory():
 	#get our python scripts path
-	configPath = cmd.PythonPluginScriptPath() + '/upyconfig.json'
+	configPath = cmd.AsAbsPath(cmd.PythonPluginScriptPath() + '/upyconfig.json')
 	correctPipPath = cmd.PythonHomeScriptsPath()
 
 	#check that we have a config file, if not make an empty one
@@ -89,7 +90,18 @@ def checkPipDirectory():
 	print('upystartup::system paths normalized.')
 	cmd.NormalizePaths();
 
+def checkProjectModuleFile():
+	path = cmd.PythonProjectScriptPath() + '/upymodule.json'
+	if upymod.containsModuleFile(path):
+		upymod.parseJson(path)
+		print("upystartup::project upymodule.json file parsed.")
+	else:
+		print("upystartup::project doesn't use a upymodule.json file.")
+
 #add any startup action you wish to perform in python
 def startup():
 	#check that our pip directory matches for pip.exe commands
 	checkPipDirectory()
+
+	#import any project specific modules
+	checkProjectModuleFile()

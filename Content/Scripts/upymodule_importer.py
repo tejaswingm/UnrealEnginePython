@@ -34,7 +34,10 @@ def parseJson(packagePath):
 				ue.log("upymodule_importer::" + module + " " + version + " installed? " + str(pip.isInstalled(module)))
 				if not pip.isInstalled(module, version):
 					ue.log('upymodule_importer::Dependency not installed, fetching via pip...')
-					pip.install(module + '==' + version)
+					if version == 'latest':
+						pip.install(module)
+					else:
+						pip.install(module + '==' + version)
 
 			dependencyNoun = 'dependencies'
 			if len(pythonModules) == 1:
@@ -44,4 +47,11 @@ def parseJson(packagePath):
 	except:
 		e = sys.exc_info()[0]
 		ue.log('upymodule_importer::upymodule.json error: ' + str(e))
+
+def containsModuleFile(packagePath):
+	try:
+		with open(packagePath) as data_file:
+			return True
+	except:
+		return False
 
