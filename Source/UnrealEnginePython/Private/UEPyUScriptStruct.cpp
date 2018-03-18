@@ -1,4 +1,4 @@
-
+// Copyright 20Tab S.r.l.
 
 #include "UnrealEnginePythonPrivatePCH.h"
 
@@ -8,7 +8,7 @@ static PyObject *py_ue_uscriptstruct_get_field(ue_PyUScriptStruct *self, PyObjec
 	char *name;
 	if (!PyArg_ParseTuple(args, "s:get_field", &name))
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	UProperty *u_property = self->u_struct->FindPropertyByName(FName(UTF8_TO_TCHAR(name)));
@@ -24,7 +24,7 @@ static PyObject *py_ue_uscriptstruct_set_field(ue_PyUScriptStruct *self, PyObjec
 	PyObject *value;
 	if (!PyArg_ParseTuple(args, "sO:set_field", &name, &value))
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	UProperty *u_property = self->u_struct->FindPropertyByName(FName(UTF8_TO_TCHAR(name)));
@@ -37,8 +37,7 @@ static PyObject *py_ue_uscriptstruct_set_field(ue_PyUScriptStruct *self, PyObjec
 		return PyErr_Format(PyExc_Exception, "unable to set property %s", name);
 	}
 
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 
 }
 
@@ -59,11 +58,7 @@ static PyObject *py_ue_uscriptstruct_fields(ue_PyUScriptStruct *self, PyObject *
 
 static PyObject *py_ue_uscriptstruct_get_struct(ue_PyUScriptStruct *self, PyObject * args)
 {
-	ue_PyUObject *ret = ue_get_python_wrapper(self->u_struct);
-	if (!ret)
-		return PyErr_Format(PyExc_Exception, "PyUObject is in invalid state");
-	Py_INCREF(ret);
-	return (PyObject *)ret;
+	Py_RETURN_UOBJECT(self->u_struct);
 }
 
 static PyObject *py_ue_uscriptstruct_clone(ue_PyUScriptStruct *self, PyObject * args)
@@ -110,6 +105,10 @@ PyObject *py_ue_uscriptstruct_as_dict(ue_PyUScriptStruct * self, PyObject * args
 	return py_struct_dict;
 }
 
+static PyObject *py_ue_uscriptstruct_ref(ue_PyUScriptStruct *, PyObject *);
+
+
+
 
 static PyMethodDef ue_PyUScriptStruct_methods[] = {
 	{ "get_field", (PyCFunction)py_ue_uscriptstruct_get_field, METH_VARARGS, "" },
@@ -118,14 +117,15 @@ static PyMethodDef ue_PyUScriptStruct_methods[] = {
 	{ "get_struct", (PyCFunction)py_ue_uscriptstruct_get_struct, METH_VARARGS, "" },
 	{ "clone", (PyCFunction)py_ue_uscriptstruct_clone, METH_VARARGS, "" },
 	{ "as_dict", (PyCFunction)py_ue_uscriptstruct_as_dict, METH_VARARGS, "" },
+	{ "ref", (PyCFunction)py_ue_uscriptstruct_ref, METH_VARARGS, "" },
 	{ NULL }  /* Sentinel */
 };
 
 
 static PyObject *ue_PyUScriptStruct_str(ue_PyUScriptStruct *self)
 {
-	return PyUnicode_FromFormat("<unreal_engine.UScriptStruct {'struct': '%s', 'size': %d}>",
-		TCHAR_TO_UTF8(*self->u_struct->GetName()), self->u_struct->GetStructureSize());
+	return PyUnicode_FromFormat("<unreal_engine.UScriptStruct {'struct': '%s', 'size': %d, 'ptr': %p}>",
+		TCHAR_TO_UTF8(*self->u_struct->GetName()), self->u_struct->GetStructureSize(), self->data);
 }
 
 static UProperty *get_field_from_name(UScriptStruct *u_struct, char *name)
@@ -203,13 +203,18 @@ static int ue_PyUScriptStruct_setattro(ue_PyUScriptStruct *self, PyObject *attr_
 	return PyObject_GenericSetAttr((PyObject *)self, attr_name, value);
 }
 
+
+
 // destructor
 static void ue_PyUScriptStruct_dealloc(ue_PyUScriptStruct *self)
 {
 #if defined(UEPY_MEMORY_DEBUG)
 	UE_LOG(LogPython, Warning, TEXT("Destroying ue_PyUScriptStruct %p with size %d"), self, self->u_struct->GetStructureSize());
 #endif
-	FMemory::Free(self->data);
+	if (!self->is_ptr)
+	{
+		FMemory::Free(self->data);
+	}
 	Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -271,7 +276,20 @@ static int ue_py_uscriptstruct_init(ue_PyUScriptStruct *self, PyObject *args, Py
 #if WITH_EDITOR
 	self->u_struct->InitializeDefaultValue(self->data);
 #endif
+	self->original_data = self->data;
+	self->is_ptr = 0;
 	return 0;
+}
+
+// get the original pointer of a struct
+static PyObject *py_ue_uscriptstruct_ref(ue_PyUScriptStruct *self, PyObject * args)
+{
+	ue_PyUScriptStruct *ret = (ue_PyUScriptStruct *)PyObject_New(ue_PyUScriptStruct, &ue_PyUScriptStructType);
+	ret->u_struct = self->u_struct;
+	ret->data = self->original_data;
+	ret->original_data = ret->data;
+	ret->is_ptr = 1;
+	return (PyObject *)ret;
 }
 
 static PyObject *ue_py_uscriptstruct_richcompare(ue_PyUScriptStruct *u_struct1, PyObject *py_obj, int op)
@@ -288,21 +306,19 @@ static PyObject *ue_py_uscriptstruct_richcompare(ue_PyUScriptStruct *u_struct1, 
 	{
 		if (equals)
 		{
-			Py_INCREF(Py_True);
-			return Py_True;
+			Py_RETURN_TRUE;
 		}
-		Py_INCREF(Py_False);
-		return Py_False;
+		Py_RETURN_FALSE;
 	}
 
 	if (equals)
 	{
-		Py_INCREF(Py_False);
-		return Py_False;
+		Py_RETURN_FALSE;
 	}
-	Py_INCREF(Py_True);
-	return Py_True;
+	Py_RETURN_TRUE;
 }
+
+
 
 
 void ue_python_init_uscriptstruct(PyObject *ue_module)
@@ -328,6 +344,19 @@ PyObject *py_ue_new_uscriptstruct(UScriptStruct *u_struct, uint8 *data)
 	ret->u_struct->InitializeStruct(struct_data);
 	ret->u_struct->CopyScriptStruct(struct_data, data);
 	ret->data = struct_data;
+	ret->original_data = data;
+	ret->is_ptr = 0;
+	return (PyObject *)ret;
+}
+
+// generate a new python UScriptStruct from an already allocated data block
+PyObject *py_ue_wrap_uscriptstruct(UScriptStruct *u_struct, uint8 *data)
+{
+	ue_PyUScriptStruct *ret = (ue_PyUScriptStruct *)PyObject_New(ue_PyUScriptStruct, &ue_PyUScriptStructType);
+	ret->u_struct = u_struct;
+	ret->data = data;
+	ret->original_data = data;
+	ret->is_ptr = 0;
 	return (PyObject *)ret;
 }
 

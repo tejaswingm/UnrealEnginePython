@@ -31,7 +31,6 @@ void SPythonTreeView::SetPythonItemExpansion(PyObject *item, bool InShouldExpand
 	}
 }
 
-
 static PyMethodDef ue_PySPythonTreeView_methods[] = {
 	{ "set_item_expansion", (PyCFunction)py_ue_spython_tree_view_set_item_expansion, METH_VARARGS, "" },
 	{ NULL }  /* Sentinel */
@@ -92,8 +91,6 @@ static int ue_py_spython_tree_view_init(ue_PySPythonTreeView *self, PyObject *ar
 	while (PyObject *item = PyIter_Next(values))
 	{
 		Py_INCREF(item);
-		// keep track of items
-		self->s_tree_view.s_list_view.s_table_view_base.s_compound_widget.s_widget.py_refs.Add(item);
 		items->Add(TSharedPtr<FPythonItem>(new FPythonItem(item)));
 	}
 	Py_DECREF(values);

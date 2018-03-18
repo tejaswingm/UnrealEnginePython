@@ -1,6 +1,7 @@
 #pragma once
 
-
+#include "UnrealEnginePython.h"
+#include "UObject/Object.h"
 #include "PythonScript.generated.h"
 
 UCLASS(MinimalAPI)

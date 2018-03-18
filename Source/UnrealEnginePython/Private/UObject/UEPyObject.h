@@ -69,6 +69,8 @@ PyObject *py_ue_class_generated_by(ue_PyUObject *, PyObject *);
 
 PyObject *py_ue_class_get_flags(ue_PyUObject *, PyObject *);
 PyObject *py_ue_class_set_flags(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_obj_flags(ue_PyUObject *, PyObject *);
+PyObject *py_ue_set_obj_flags(ue_PyUObject *, PyObject *);
 
 
 #if WITH_EDITOR
@@ -82,7 +84,13 @@ PyObject *py_ue_asset_reimport(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_metadata(ue_PyUObject *, PyObject *);
 PyObject *py_ue_set_metadata(ue_PyUObject *, PyObject *);
 PyObject *py_ue_has_metadata(ue_PyUObject *, PyObject *);
+
+PyObject *py_ue_import_custom_properties(ue_PyUObject *, PyObject *);
 #endif
 
 PyObject *py_ue_get_thumbnail(ue_PyUObject *, PyObject *);
 PyObject *py_ue_render_thumbnail(ue_PyUObject *, PyObject *);
+
+PyObject *py_ue_to_bytes(ue_PyUObject *, PyObject *);
+PyObject *py_ue_to_bytearray(ue_PyUObject *, PyObject *);
+PyObject *py_ue_from_bytes(ue_PyUObject *, PyObject *);

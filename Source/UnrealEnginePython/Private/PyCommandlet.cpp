@@ -1,3 +1,5 @@
+// Copyright 20Tab S.r.l.
+
 #include "UnrealEnginePythonPrivatePCH.h"
 #include "PyCommandlet.h"
 
@@ -28,7 +30,11 @@ int32 UPyCommandlet::Main(const FString& CommandLine)
 	const FRegexPattern myPattern(RegexString);
 	FRegexMatcher myMatcher(myPattern, *CommandLine);
 	myMatcher.FindNext();
+#if ENGINE_MINOR_VERSION >= 18
+	FString PyCommandLine = myMatcher.GetCaptureGroup(0).TrimStart().TrimEnd();
+#else
 	FString PyCommandLine = myMatcher.GetCaptureGroup(0).Trim().TrimTrailing();
+#endif
 
 	TArray<FString> PyArgv;
 	PyArgv.Add(FString());

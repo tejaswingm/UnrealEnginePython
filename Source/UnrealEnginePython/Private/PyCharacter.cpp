@@ -1,3 +1,5 @@
+// Copyright 20Tab S.r.l.
+
 #include "UnrealEnginePythonPrivatePCH.h"
 #include "PyCharacter.h"
 
@@ -27,7 +29,7 @@ void APyCharacter::PreInitializeComponents()
 
 	FScopePythonGIL gil;
 
-	py_uobject = ue_get_python_wrapper(this);
+	py_uobject = ue_get_python_uobject(this);
 	if (!py_uobject) {
 		unreal_engine_py_log_error();
 		return;
@@ -189,7 +191,7 @@ void APyCharacter::SetPythonAttrObject(FString attr, UObject *object)
 
 	FScopePythonGIL gil;
 
-	ue_PyUObject *py_obj = ue_get_python_wrapper(object);
+	ue_PyUObject *py_obj = ue_get_python_uobject(object);
 	if (!py_obj) {
 		PyErr_Format(PyExc_Exception, "PyUObject is in invalid state");
 		unreal_engine_py_log_error();
@@ -406,7 +408,7 @@ void APyCharacter::SetupPlayerInputComponent(class UInputComponent* input)
 
 	// no need to check for method availability, we did it in begin_play
 
-	PyObject *ret = PyObject_CallMethod(py_character_instance, (char *)"setup_player_input_component", (char *)"O", ue_get_python_wrapper(input));
+	PyObject *ret = PyObject_CallMethod(py_character_instance, (char *)"setup_player_input_component", (char *)"O", ue_get_python_uobject(input));
 	if (!ret) {
 		unreal_engine_py_log_error();
 		return;
@@ -441,19 +443,14 @@ APyCharacter::~APyCharacter()
 {
 	FScopePythonGIL gil;
 
-	ue_pydelegates_cleanup(py_uobject);
 
-#if defined(UEPY_MEMORY_DEBUG)
-	if (py_character_instance && py_character_instance->ob_refcnt != 1) {
-		UE_LOG(LogPython, Error, TEXT("Inconsistent Python ACharacter wrapper refcnt = %d"), py_character_instance->ob_refcnt);
-	}
-#endif
 	Py_XDECREF(py_character_instance);
 	
 #if defined(UEPY_MEMORY_DEBUG)
-	UE_LOG(LogPython, Warning, TEXT("Python ACharacter (mapped to %p) wrapper XDECREF'ed"), py_uobject ? py_uobject->ue_object : nullptr);
+	UE_LOG(LogPython, Warning, TEXT("Python ACharacter (mapped to %p) wrapper XDECREF'ed"), py_uobject ? py_uobject->py_proxy : nullptr);
 #endif
 
 	// this could trigger the distruction of the python/uobject mapper
 	Py_XDECREF(py_uobject);
+	FUnrealEnginePythonHouseKeeper::Get()->UnregisterPyUObject(this);
 }

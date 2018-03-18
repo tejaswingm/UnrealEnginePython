@@ -1,7 +1,7 @@
 {
   "FileVersion": 3,
   "Version": 1,
-  "VersionName": "1.4.3",
+  "VersionName": "1.5.0",
   "FriendlyName": "UnrealEnginePython",
   "Description": "Embed a Python VM in your project",
   "Category": "Scripting Languages",
@@ -20,16 +20,16 @@
       "Type": "Runtime",
       "LoadingPhase": "PreDefault"
     },
-    {
-      "Name": "PythonConsole",
-      "Type": "Editor",
-      "LoadingPhase": "PostDefault"
-    },
-    {
-      "Name": "PythonEditor",
-      "Type": "Editor",
-      "LoadingPhase": "PostDefault"
-    }
+		{
+			"Name": "PythonConsole",
+			"Type": "Editor",
+			"LoadingPhase": "PostDefault"
+		},
+		{
+			"Name" : "PythonEditor",
+			"Type" : "Editor",
+			"LoadingPhase": "PostDefault"
+		}
   ],
   "Plugins": [
     {

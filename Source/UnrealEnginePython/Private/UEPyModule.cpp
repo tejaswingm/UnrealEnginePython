@@ -1,7 +1,5 @@
 #include "UnrealEnginePythonPrivatePCH.h"
 
-
-
 #include "UEPyEngine.h"
 #include "UEPyTimer.h"
 #include "UEPyTicker.h"
@@ -37,6 +35,7 @@
 #include "UObject/UEPyLandscape.h"
 #include "UObject/UEPyUserDefinedStruct.h"
 #include "UObject/UEPyDataTable.h"
+#include "UObject/UEPyExporter.h"
 
 
 #include "UEPyAssetUserData.h"
@@ -68,6 +67,7 @@ DEFINE_LOG_CATEGORY(LogPython);
 
 PyDoc_STRVAR(unreal_engine_py_doc, "Unreal Engine Python module.");
 
+
 #if PY_MAJOR_VERSION >= 3
 static PyModuleDef unreal_engine_module = {
 	PyModuleDef_HEAD_INIT,
@@ -76,40 +76,21 @@ static PyModuleDef unreal_engine_module = {
 	-1,
 	NULL,
 };
+static PyObject *init_unreal_engine(void);
 
-static PyObject *init_unreal_engine(void)
+
+
+void init_unreal_engine_builtin()
 {
-	return PyModule_Create(&unreal_engine_module);
+	PyImport_AppendInittab("unreal_engine", &init_unreal_engine);
 }
 #endif
-
-std::map<UObject *, ue_PyUObject *> ue_python_gc;
 
 
 static PyObject *py_unreal_engine_py_gc(PyObject * self, PyObject * args)
 {
-	std::list<UObject *> broken_list;
-	for (auto it : ue_python_gc)
-	{
-#if defined(UEPY_MEMORY_DEBUG)
-		UE_LOG(LogPython, Warning, TEXT("Checking for UObject at %p"), it.first);
-#endif
-		UObject *u_obj = it.first;
-		if (!u_obj || !u_obj->IsValidLowLevel() || u_obj->IsPendingKillOrUnreachable())
-		{
-#if defined(UEPY_MEMORY_DEBUG)
-			UE_LOG(LogPython, Warning, TEXT("Removing UObject at %p (refcnt: %d)"), it.first, it.second->ob_base.ob_refcnt);
-#endif
-			broken_list.push_back(u_obj);
-		}
-	}
-	for (UObject *u_obj : broken_list)
-	{
-		ue_PyUObject *py_obj = ue_python_gc.at(u_obj);
-		Py_DECREF(py_obj);
-	}
-
-	return PyLong_FromLong(broken_list.size());
+	int32 Garbaged = FUnrealEnginePythonHouseKeeper::Get()->RunGC();
+	return PyLong_FromLong(Garbaged);
 
 }
 
@@ -135,8 +116,7 @@ static PyObject *py_unreal_engine_sandbox_exec(PyObject * self, PyObject * args)
 	}
 	FUnrealEnginePythonModule &PythonModule = FModuleManager::GetModuleChecked<FUnrealEnginePythonModule>("UnrealEnginePython");
 	PythonModule.RunFileSandboxed(filename, nullptr, nullptr);
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 static PyObject *py_ue_get_py_proxy(ue_PyUObject *self, PyObject * args)
@@ -147,11 +127,11 @@ static PyObject *py_ue_get_py_proxy(ue_PyUObject *self, PyObject * args)
 	if (self->py_proxy)
 	{
 		Py_INCREF(self->py_proxy);
+		UE_LOG(LogPython, Error, TEXT("PROXY %d"), self->py_proxy->ob_refcnt);
 		return (PyObject *)self->py_proxy;
 	}
 
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 static PyMethodDef unreal_engine_methods[] = {
@@ -176,12 +156,16 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "load_object", py_unreal_engine_load_object, METH_VARARGS, "" },
 
 	{ "load_package", py_unreal_engine_load_package, METH_VARARGS, "" },
-
+#if WITH_EDITOR
+	{ "unload_package", py_unreal_engine_unload_package, METH_VARARGS, "" },
+#endif
 	{ "get_forward_vector", py_unreal_engine_get_forward_vector, METH_VARARGS, "" },
 	{ "get_up_vector", py_unreal_engine_get_up_vector, METH_VARARGS, "" },
 	{ "get_right_vector", py_unreal_engine_get_right_vector, METH_VARARGS, "" },
 
 	{ "get_content_dir", py_unreal_engine_get_content_dir, METH_VARARGS, "" },
+	{ "get_game_saved_dir", py_unreal_engine_get_game_saved_dir, METH_VARARGS, "" },
+	{ "get_game_user_developer_dir", py_unreal_engine_get_game_user_developer_dir, METH_VARARGS, "" },
 	{ "convert_relative_path_to_full", py_unreal_engine_convert_relative_path_to_full, METH_VARARGS, "" },
 
 	{ "get_path", py_unreal_engine_get_path, METH_VARARGS, "" },
@@ -211,9 +195,14 @@ static PyMethodDef unreal_engine_methods[] = {
 
 	// slate
 
+	{ "find_slate_style", py_unreal_engine_find_slate_style, METH_VARARGS, "" },
+	{ "find_icon_for_class", py_unreal_engine_find_icon_for_class, METH_VARARGS, "" },
+
 	{ "register_nomad_tab_spawner", py_unreal_engine_register_nomad_tab_spawner, METH_VARARGS, "" },
 	{ "unregister_nomad_tab_spawner", py_unreal_engine_unregister_nomad_tab_spawner, METH_VARARGS, "" },
 	{ "invoke_tab", py_unreal_engine_invoke_tab, METH_VARARGS, "" },
+	{ "get_swidget_from_wrapper", py_unreal_engine_get_swidget_from_wrapper, METH_VARARGS, "" },
+	{ "create_wrapper_from_pyswidget", py_unreal_engine_create_wrapper_from_pyswidget, METH_VARARGS, "" },
 #if WITH_EDITOR
 	{ "get_editor_window", py_unreal_engine_get_editor_window, METH_VARARGS, "" },
 	{ "add_menu_extension", py_unreal_engine_add_menu_extension, METH_VARARGS, "" },
@@ -223,7 +212,9 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "add_asset_view_context_menu_extension", py_unreal_engine_add_asset_view_context_menu_extension, METH_VARARGS, "" },
 
 #pragma warning(suppress: 4191)
-	{ "create_detail_view",  (PyCFunction)py_unreal_engine_create_detail_view, METH_VARARGS | METH_KEYWORDS, "" },
+	{ "create_detail_view", (PyCFunction)py_unreal_engine_create_detail_view, METH_VARARGS | METH_KEYWORDS, "" },
+#pragma warning(suppress: 4191)
+	{ "create_structure_detail_view", (PyCFunction)py_unreal_engine_create_structure_detail_view, METH_VARARGS | METH_KEYWORDS, "" },
 #pragma warning(suppress: 4191)
 	{ "create_property_view",  (PyCFunction)py_unreal_engine_create_property_view, METH_VARARGS | METH_KEYWORDS, "" },
 
@@ -237,6 +228,7 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "editor_select_actor", py_unreal_engine_editor_select_actor, METH_VARARGS, "" },
 	{ "editor_deselect_actors", py_unreal_engine_editor_deselect_actors, METH_VARARGS, "" },
 	{ "import_asset", py_unreal_engine_import_asset, METH_VARARGS, "" },
+	{ "export_assets", py_unreal_engine_export_assets, METH_VARARGS, "" },
 	{ "get_asset", py_unreal_engine_get_asset, METH_VARARGS, "" },
 	{ "find_asset", py_unreal_engine_find_asset, METH_VARARGS, "" },
 	{ "delete_object", py_unreal_engine_delete_object, METH_VARARGS, "" },
@@ -280,6 +272,7 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "create_blueprint", py_unreal_engine_create_blueprint, METH_VARARGS, "" },
 	{ "create_blueprint_from_actor", py_unreal_engine_create_blueprint_from_actor, METH_VARARGS, "" },
 	{ "replace_blueprint", py_unreal_engine_replace_blueprint, METH_VARARGS, "" },
+	{ "get_blueprint_hierarchy_from_class", py_unreal_engine_get_blueprint_hierarchy_from_class, METH_VARARGS, "" },
 	{ "reload_blueprint", py_unreal_engine_reload_blueprint, METH_VARARGS, "" },
 	{ "compile_blueprint", py_unreal_engine_compile_blueprint, METH_VARARGS, "" },
 	{ "blueprint_add_member_variable", py_unreal_engine_blueprint_add_member_variable, METH_VARARGS, "" },
@@ -288,6 +281,7 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "blueprint_set_variable_visibility", py_unreal_engine_blueprint_set_variable_visibility, METH_VARARGS, "" },
 	{ "blueprint_add_function", py_unreal_engine_blueprint_add_function, METH_VARARGS, "" },
 	{ "blueprint_add_ubergraph_page", py_unreal_engine_blueprint_add_ubergraph_page, METH_VARARGS, "" },
+	{ "blueprint_get_all_graphs", py_unreal_engine_blueprint_get_all_graphs, METH_VARARGS, "" },
 	{ "blueprint_mark_as_structurally_modified", py_unreal_engine_blueprint_mark_as_structurally_modified, METH_VARARGS, "" },
 	{ "add_component_to_blueprint", py_unreal_engine_add_component_to_blueprint, METH_VARARGS, "" },
 	{ "get_blueprint_components", py_unreal_engine_get_blueprint_components, METH_VARARGS, "" },
@@ -339,7 +333,6 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "all_worlds", (PyCFunction)py_unreal_engine_all_worlds, METH_VARARGS, "" },
 	{ "tobject_iterator", (PyCFunction)py_unreal_engine_tobject_iterator, METH_VARARGS, "" },
 
-
 	{ "new_class", py_unreal_engine_new_class, METH_VARARGS, "" },
 
 
@@ -371,6 +364,7 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "play_sound", py_unreal_engine_play_sound, METH_VARARGS, "" },
 #if WITH_EDITOR
 	{ "editor_play_in_viewport", py_unreal_engine_editor_play_in_viewport, METH_VARARGS, "" },
+	{ "request_play_session", py_unreal_engine_request_play_session, METH_VARARGS, "" },
 	{ "get_editor_pie_game_viewport_client", py_unreal_engine_get_editor_pie_game_viewport_client, METH_VARARGS, "" },
 	{ "editor_get_active_viewport_screenshot", py_unreal_engine_editor_get_active_viewport_screenshot, METH_VARARGS, "" },
 	{ "editor_get_pie_viewport_screenshot", py_unreal_engine_editor_get_pie_viewport_screenshot, METH_VARARGS, "" },
@@ -386,10 +380,16 @@ static PyMethodDef unreal_engine_methods[] = {
 	{ "editor_take_high_res_screen_shots", py_unreal_engine_editor_take_high_res_screen_shots, METH_VARARGS, "" },
 
 	{ "register_settings", py_unreal_engine_register_settings, METH_VARARGS, "" },
+	{ "show_viewer", py_unreal_engine_show_viewer, METH_VARARGS, "" },
 	{ "unregister_settings", py_unreal_engine_unregister_settings, METH_VARARGS, "" },
+
+	{ "in_editor_capture", py_unreal_engine_in_editor_capture, METH_VARARGS, "" },
 #endif
 	//duplicate for now for testing
 	{ "run_on_gt", py_unreal_engine_create_and_dispatch_when_ready, METH_VARARGS, "" },
+
+	{ "clipboard_copy", py_unreal_engine_clipboard_copy, METH_VARARGS, "" },
+	{ "clipboard_paste", py_unreal_engine_clipboard_paste, METH_VARARGS, "" },
 
 #pragma warning(suppress: 4191)
 	{ "copy_properties_for_unrelated_objects", (PyCFunction)py_unreal_engine_copy_properties_for_unrelated_objects, METH_VARARGS | METH_KEYWORDS, "" },
@@ -477,6 +477,10 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "get_path_name", (PyCFunction)py_ue_get_path_name, METH_VARARGS, "" },
 	{ "get_full_name", (PyCFunction)py_ue_get_full_name, METH_VARARGS, "" },
 
+#if WITH_EDITOR
+	{ "import_custom_properties", (PyCFunction)py_ue_import_custom_properties, METH_VARARGS, "" },
+#endif
+
 #if ENGINE_MINOR_VERSION >= 15
 	{ "can_modify", (PyCFunction)py_ue_can_modify, METH_VARARGS, "" },
 #endif
@@ -548,6 +552,8 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "data_table_get_all_rows", (PyCFunction)py_ue_data_table_get_all_rows, METH_VARARGS, "" },
 #endif
 
+	{ "export_to_file", (PyCFunction)py_ue_export_to_file, METH_VARARGS, "" },
+
 	{ "is_rooted", (PyCFunction)py_ue_is_rooted, METH_VARARGS, "" },
 	{ "add_to_root", (PyCFunction)py_ue_add_to_root, METH_VARARGS, "" },
 	{ "auto_root", (PyCFunction)py_ue_auto_root, METH_VARARGS, "" },
@@ -571,6 +577,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 #if WITH_EDITOR
 	// AssetUserData
 	{ "asset_import_data", (PyCFunction)py_ue_asset_import_data, METH_VARARGS, "" },
+	{ "asset_import_data_set_sources", (PyCFunction)py_ue_asset_import_data_set_sources, METH_VARARGS, "" },
 #endif
 
 	// AnimSequence
@@ -653,6 +660,8 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "class_generated_by", (PyCFunction)py_ue_class_generated_by, METH_VARARGS, "" },
 	{ "class_get_flags", (PyCFunction)py_ue_class_get_flags, METH_VARARGS, "" },
 	{ "class_set_flags", (PyCFunction)py_ue_class_set_flags, METH_VARARGS, "" },
+	{ "get_obj_flags", (PyCFunction)py_ue_get_obj_flags, METH_VARARGS, "" },
+	{ "set_obj_flags", (PyCFunction)py_ue_set_obj_flags, METH_VARARGS, "" },
 
 #if WITH_EDITOR
 	{ "class_get_config_name", (PyCFunction)py_ue_class_get_config_name, METH_VARARGS, "" },
@@ -723,6 +732,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 
 	{ "add_actor_component", (PyCFunction)py_ue_add_actor_component, METH_VARARGS, "" },
 	{ "add_instance_component", (PyCFunction)py_ue_add_instance_component, METH_VARARGS, "" },
+	{ "get_actor_root_component", (PyCFunction)py_ue_get_actor_root_component, METH_VARARGS, "" },
 	{ "add_actor_root_component", (PyCFunction)py_ue_add_actor_root_component, METH_VARARGS, "" },
 	{ "get_actor_component_by_type", (PyCFunction)py_ue_get_actor_component_by_type, METH_VARARGS, "" },
 	{ "get_component_by_type", (PyCFunction)py_ue_get_actor_component_by_type, METH_VARARGS, "" },
@@ -747,6 +757,8 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "has_world", (PyCFunction)py_ue_has_world, METH_VARARGS, "" },
 
 	{ "get_game_viewport", (PyCFunction)py_ue_get_game_viewport, METH_VARARGS, "" },
+		
+	{ "game_viewport_client_set_rendering_flag", (PyCFunction)py_ue_game_viewport_client_set_rendering_flag, METH_VARARGS, "" },
 
 	{ "get_world_location_at_distance_along_spline", (PyCFunction)py_ue_get_world_location_at_distance_along_spline, METH_VARARGS, "" },
 	{ "get_spline_length", (PyCFunction)py_ue_get_spline_length, METH_VARARGS, "" },
@@ -798,6 +810,11 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "capture_initialize", (PyCFunction)py_ue_capture_initialize, METH_VARARGS, "" },
 	{ "capture_start", (PyCFunction)py_ue_capture_start, METH_VARARGS, "" },
 	{ "capture_stop", (PyCFunction)py_ue_capture_stop, METH_VARARGS, "" },
+	{ "capture_load_from_config", (PyCFunction)py_ue_capture_load_from_config, METH_VARARGS, "" },
+
+#if WITH_EDITOR
+	{ "set_level_sequence_asset", (PyCFunction)py_ue_set_level_sequence_asset, METH_VARARGS, "" },
+#endif
 
 	// Pawn
 	{ "get_controller", (PyCFunction)py_ue_pawn_get_controller, METH_VARARGS, "" },
@@ -884,6 +901,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	// Sequencer
 	{ "sequencer_master_tracks", (PyCFunction)py_ue_sequencer_master_tracks, METH_VARARGS, "" },
 	{ "sequencer_possessable_tracks", (PyCFunction)py_ue_sequencer_possessable_tracks, METH_VARARGS, "" },
+	{ "sequencer_get_camera_cut_track", (PyCFunction)py_ue_sequencer_get_camera_cut_track, METH_VARARGS, "" },
 #if WITH_EDITOR
 	{ "sequencer_folders", (PyCFunction)py_ue_sequencer_folders, METH_VARARGS, "" },
 	{ "sequencer_create_folder", (PyCFunction)py_ue_sequencer_create_folder, METH_VARARGS, "" },
@@ -892,6 +910,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "sequencer_changed", (PyCFunction)py_ue_sequencer_changed, METH_VARARGS, "" },
 	{ "sequencer_add_camera_cut_track", (PyCFunction)py_ue_sequencer_add_camera_cut_track, METH_VARARGS, "" },
 	{ "sequencer_add_actor", (PyCFunction)py_ue_sequencer_add_actor, METH_VARARGS, "" },
+	{ "sequencer_add_actor_component", (PyCFunction)py_ue_sequencer_add_actor_component, METH_VARARGS, "" },
 	{ "sequencer_make_new_spawnable", (PyCFunction)py_ue_sequencer_make_new_spawnable, METH_VARARGS, "" },
 
 	{ "sequencer_add_possessable", (PyCFunction)py_ue_sequencer_add_possessable, METH_VARARGS, "" },
@@ -950,36 +969,14 @@ static PyMethodDef ue_PyUObject_methods[] = {
 #if ENGINE_MINOR_VERSION >= 15
 	{ "enum_user_defined_names", (PyCFunction)py_ue_enum_user_defined_names, METH_VARARGS, "" },
 #endif
+
+	// serialization
+	{ "to_bytes", (PyCFunction)py_ue_to_bytes, METH_VARARGS, "" },
+	{ "to_bytearray", (PyCFunction)py_ue_to_bytearray, METH_VARARGS, "" },
+	{ "from_bytes", (PyCFunction)py_ue_from_bytes, METH_VARARGS, "" },
 	{ NULL }  /* Sentinel */
 };
 
-void ue_pydelegates_cleanup(ue_PyUObject *self)
-{
-	// this could happen during engine shutdown, so have mercy
-	// start deallocating delegates mapped to the object
-	if (!self || !self->python_delegates_gc)
-		return;
-	for (UPythonDelegate *py_delegate : *(self->python_delegates_gc))
-	{
-		if (py_delegate && py_delegate->IsValidLowLevel())
-		{
-#if defined(UEPY_MEMORY_DEBUG)
-			UE_LOG(LogPython, Warning, TEXT("Removing UPythonDelegate %p from ue_PyUObject %p mapped to UObject %p"), py_delegate, self, self->ue_object);
-#endif
-			py_delegate->RemoveFromRoot();
-		}
-	}
-	self->python_delegates_gc->clear();
-	delete self->python_delegates_gc;
-	self->python_delegates_gc = nullptr;
-
-	if (self->auto_rooted && self->ue_object->IsRooted())
-	{
-		self->ue_object->RemoveFromRoot();
-	}
-
-	Py_XDECREF(self->py_dict);
-}
 
 // destructor
 static void ue_pyobject_dealloc(ue_PyUObject *self)
@@ -987,13 +984,20 @@ static void ue_pyobject_dealloc(ue_PyUObject *self)
 #if defined(UEPY_MEMORY_DEBUG)
 	UE_LOG(LogPython, Warning, TEXT("Destroying ue_PyUObject %p mapped to UObject %p"), self, self->ue_object);
 #endif
-	ue_pydelegates_cleanup(self);
-	ue_python_gc.erase(self->ue_object);
+	if (self->auto_rooted && (self->ue_object && self->ue_object->IsValidLowLevel() && self->ue_object->IsRooted()))
+	{
+		self->ue_object->RemoveFromRoot();
+	}
+
+	Py_XDECREF(self->py_dict);
+
 	Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static PyObject *ue_PyUObject_getattro(ue_PyUObject *self, PyObject *attr_name)
 {
+	ue_py_check(self);
+
 	PyObject *ret = PyObject_GenericGetAttr((PyObject *)self, attr_name);
 	if (!ret)
 	{
@@ -1093,6 +1097,8 @@ static PyObject *ue_PyUObject_getattro(ue_PyUObject *self, PyObject *attr_name)
 
 static int ue_PyUObject_setattro(ue_PyUObject *self, PyObject *attr_name, PyObject *value)
 {
+	ue_py_check_int(self);
+
 	// first of all check for UProperty
 	if (PyUnicodeOrString_Check(attr_name))
 	{
@@ -1130,6 +1136,8 @@ static int ue_PyUObject_setattro(ue_PyUObject *self, PyObject *attr_name, PyObje
 
 static PyObject *ue_PyUObject_str(ue_PyUObject *self)
 {
+	ue_py_check(self);
+
 #if PY_MAJOR_VERSION >= 3
 	return PyUnicode_FromFormat("<unreal_engine.UObject '%s' (%p) UClass '%s' (refcnt: %d)>",
 		TCHAR_TO_UTF8(*self->ue_object->GetName()), self->ue_object, TCHAR_TO_UTF8(*self->ue_object->GetClass()->GetName()), self->ob_base.ob_refcnt);
@@ -1141,6 +1149,7 @@ static PyObject *ue_PyUObject_str(ue_PyUObject *self)
 
 static PyObject *ue_PyUObject_call(ue_PyUObject *self, PyObject *args, PyObject *kw)
 {
+	ue_py_check(self);
 	// if it is a class, create a new object
 	if (self->ue_object->IsA<UClass>())
 	{
@@ -1178,7 +1187,7 @@ static PyObject *ue_PyUObject_call(ue_PyUObject *self, PyObject *args, PyObject 
 	if (self->ue_object->IsA<UScriptStruct>())
 	{
 		UScriptStruct *u_script_struct = (UScriptStruct *)self->ue_object;
-		uint8 *data = (uint8*)FMemory_Alloca(u_script_struct->GetStructureSize());
+		uint8 *data = (uint8*)FMemory::Malloc(u_script_struct->GetStructureSize());
 		u_script_struct->InitializeStruct(data);
 #if WITH_EDITOR
 		u_script_struct->InitializeDefaultValue(data);
@@ -1192,7 +1201,10 @@ static PyObject *ue_PyUObject_call(ue_PyUObject *self, PyObject *args, PyObject 
 				if (!key)
 				{
 					if (PyErr_Occurred())
+					{
+						FMemory::Free(data);
 						return PyErr_Format(PyExc_Exception, "unable to build struct from dictionary");
+					}
 					break;
 				}
 				if (!PyUnicodeOrString_Check(key))
@@ -1203,7 +1215,10 @@ static PyObject *ue_PyUObject_call(ue_PyUObject *self, PyObject *args, PyObject 
 				if (!value)
 				{
 					if (PyErr_Occurred())
+					{
+						FMemory::Free(data);
 						return PyErr_Format(PyExc_Exception, "unable to build struct from dictionary");
+					}
 					break;
 				}
 
@@ -1212,16 +1227,18 @@ static PyObject *ue_PyUObject_call(ue_PyUObject *self, PyObject *args, PyObject 
 				{
 					if (!ue_py_convert_pyobject(value, u_property, data))
 					{
+						FMemory::Free(data);
 						return PyErr_Format(PyExc_Exception, "invalid value for UProperty");
 					}
 				}
 				else
 				{
+					FMemory::Free(data);
 					return PyErr_Format(PyExc_Exception, "UProperty %s not found", struct_key);
 				}
 			}
 		}
-		return py_ue_new_uscriptstruct(u_script_struct, data);
+		return py_ue_wrap_uscriptstruct(u_script_struct, data);
 	}
 	return PyErr_Format(PyExc_Exception, "the specified uobject has no __call__ support");
 }
@@ -1247,7 +1264,7 @@ static PyTypeObject ue_PyUObjectType = {
 	(setattrofunc)ue_PyUObject_setattro, /* tp_setattro */
 	0,                         /* tp_as_buffer */
 	Py_TPFLAGS_DEFAULT,        /* tp_flags */
-	"Unreal Engine generic UObject",           /* tp_doc */
+	"Unreal Engine UObject wrapper",           /* tp_doc */
 	0,                         /* tp_traverse */
 	0,                         /* tp_clear */
 	0,                         /* tp_richcompare */
@@ -1256,6 +1273,11 @@ static PyTypeObject ue_PyUObjectType = {
 	0,                         /* tp_iternext */
 	ue_PyUObject_methods,             /* tp_methods */
 };
+
+
+
+
+
 
 UClass *unreal_engine_new_uclass(char *name, UClass *outer_parent)
 {
@@ -1367,497 +1389,24 @@ static void UEPyClassConstructor(UClass *u_class, const FObjectInitializer &Obje
 	ue_py_class_constructor_placeholder = nullptr;
 }
 
-static int unreal_engine_py_init(ue_PyUObject *self, PyObject *args, PyObject *kwds)
-{
-	// is it subclassing ?
-	if (PyTuple_Size(args) == 3)
-	{
-		// TODO make it smarter on error checking
-		UE_LOG(LogPython, Warning, TEXT("%s"), UTF8_TO_TCHAR(PyUnicode_AsUTF8(PyObject_Str(PyTuple_GetItem(args, 0)))));
-		UE_LOG(LogPython, Warning, TEXT("%s"), UTF8_TO_TCHAR(PyUnicode_AsUTF8(PyObject_Str(PyTuple_GetItem(args, 1)))));
-		UE_LOG(LogPython, Warning, TEXT("%s"), UTF8_TO_TCHAR(PyUnicode_AsUTF8(PyObject_Str(PyTuple_GetItem(args, 2)))));
-
-		PyObject *parents = PyTuple_GetItem(args, 1);
-		ue_PyUObject *parent = (ue_PyUObject *)PyTuple_GetItem(parents, 0);
-
-		PyObject *class_attributes = PyTuple_GetItem(args, 2);
-
-		PyObject *class_name = PyDict_GetItemString(class_attributes, (char *)"__qualname__");
-		char *name = PyUnicode_AsUTF8(class_name);
-		// check if parent is a uclass
-		UClass *new_class = unreal_engine_new_uclass(name, (UClass *)parent->ue_object);
-		if (!new_class)
-			return -1;
-
-		// map the class to the python object
-		self->ue_object = new_class;
-
-		PyObject *py_additional_properties = PyDict_New();
-
-		PyObject *class_attributes_keys = PyObject_GetIter(class_attributes);
-		for (;;)
-		{
-			PyObject *key = PyIter_Next(class_attributes_keys);
-			if (!key)
-			{
-				if (PyErr_Occurred())
-					return -1;
-				break;
-			}
-			if (!PyUnicodeOrString_Check(key))
-				continue;
-			char *class_key = PyUnicode_AsUTF8(key);
-
-			PyObject *value = PyDict_GetItem(class_attributes, key);
-
-			if (strlen(class_key) > 2 && class_key[0] == '_' && class_key[1] == '_')
-			{
-				continue;
-			}
-
-			bool prop_added = false;
-
-			if (UProperty *u_property = new_class->FindPropertyByName(FName(UTF8_TO_TCHAR(class_key))))
-			{
-				UE_LOG(LogPython, Warning, TEXT("Found UProperty %s"), UTF8_TO_TCHAR(class_key));
-				PyDict_SetItem(py_additional_properties, key, value);
-				prop_added = true;
-			}
-			// add simple property
-			else if (ue_is_pyuobject(value))
-			{
-				ue_PyUObject *py_obj = (ue_PyUObject *)value;
-				if (py_obj->ue_object->IsA<UClass>())
-				{
-					UClass *p_class = (UClass *)py_obj->ue_object;
-					if (p_class->IsChildOf<UProperty>())
-					{
-						if (!py_ue_add_property(self, Py_BuildValue("(Os)", value, class_key)))
-						{
-							unreal_engine_py_log_error();
-							return -1;
-						}
-						prop_added = true;
-					}
-					else
-					{
-						if (!py_ue_add_property(self, Py_BuildValue("(OsO)", (PyObject *)ue_get_python_wrapper(UObjectProperty::StaticClass()), class_key, value)))
-						{
-							unreal_engine_py_log_error();
-							return -1;
-						}
-						prop_added = true;
-					}
-				}
-				else if (py_obj->ue_object->IsA<UScriptStruct>())
-				{
-					if (!py_ue_add_property(self, Py_BuildValue("(OsO)", (PyObject *)ue_get_python_wrapper(UStructProperty::StaticClass()), class_key, value)))
-					{
-						unreal_engine_py_log_error();
-						return -1;
-					}
-					prop_added = true;
-				}
-			}
-
-			// add array property
-			else if (PyList_Check(value))
-			{
-				if (PyList_Size(value) == 1)
-				{
-					PyObject *first_item = PyList_GetItem(value, 0);
-					if (ue_is_pyuobject(first_item))
-					{
-						ue_PyUObject *py_obj = (ue_PyUObject *)first_item;
-						if (py_obj->ue_object->IsA<UClass>())
-						{
-							UClass *p_class = (UClass *)py_obj->ue_object;
-							if (p_class->IsChildOf<UProperty>())
-							{
-								if (!py_ue_add_property(self, Py_BuildValue("(Os)", value, class_key)))
-								{
-									unreal_engine_py_log_error();
-									return -1;
-								}
-								prop_added = true;
-							}
-
-							else
-							{
-								if (!py_ue_add_property(self, Py_BuildValue("([O]sO)", (PyObject *)ue_get_python_wrapper(UObjectProperty::StaticClass()), class_key, first_item)))
-								{
-									unreal_engine_py_log_error();
-									return -1;
-								}
-								prop_added = true;
-							}
-						}
-						else if (py_obj->ue_object->IsA<UScriptStruct>())
-						{
-							if (!py_ue_add_property(self, Py_BuildValue("([O]sO)", (PyObject *)ue_get_python_wrapper(UStructProperty::StaticClass()), class_key, first_item)))
-							{
-								unreal_engine_py_log_error();
-								return -1;
-							}
-							prop_added = true;
-						}
-					}
-
-				}
-			}
-#if ENGINE_MINOR_VERSION >= 15
-			else if (PyDict_Check(value))
-			{
-				if (PyDict_Size(value) == 1)
-				{
-					PyObject *py_key = nullptr;
-					PyObject *py_value = nullptr;
-					Py_ssize_t pos = 0;
-					PyDict_Next(value, &pos, &py_key, &py_value);
-					if (ue_is_pyuobject(py_key) && ue_is_pyuobject(py_value))
-					{
-						PyObject *first_item = nullptr;
-						PyObject *second_item = nullptr;
-
-						ue_PyUObject *py_obj = (ue_PyUObject *)py_key;
-						if (py_obj->ue_object->IsA<UClass>())
-						{
-							UClass *p_class = (UClass *)py_obj->ue_object;
-							if (p_class->IsChildOf<UProperty>())
-							{
-								first_item = py_key;
-							}
-							else
-							{
-								first_item = (PyObject *)ue_get_python_wrapper(UObjectProperty::StaticClass());
-							}
-						}
-						else if (py_obj->ue_object->IsA<UScriptStruct>())
-						{
-							first_item = (PyObject *)ue_get_python_wrapper(UStructProperty::StaticClass());
-						}
-
-						ue_PyUObject *py_obj2 = (ue_PyUObject *)py_value;
-						if (py_obj2->ue_object->IsA<UClass>())
-						{
-							UClass *p_class = (UClass *)py_obj2->ue_object;
-							if (p_class->IsChildOf<UProperty>())
-							{
-								second_item = py_value;
-							}
-							else
-							{
-								second_item = (PyObject *)ue_get_python_wrapper(UObjectProperty::StaticClass());
-							}
-						}
-						else if (py_obj2->ue_object->IsA<UScriptStruct>())
-						{
-							second_item = (PyObject *)ue_get_python_wrapper(UStructProperty::StaticClass());
-						}
-
-						if (!py_ue_add_property(self, Py_BuildValue("([OO]sOO)", first_item, second_item, class_key, py_key, py_value)))
-						{
-							unreal_engine_py_log_error();
-							return -1;
-						}
-						prop_added = true;
-					}
-				}
-			}
-#endif
-			// function ?
-			else if (PyCallable_Check(value) && class_key[0] >= 'A' && class_key[0] <= 'Z')
-			{
-				uint32 func_flags = FUNC_Native | FUNC_BlueprintCallable | FUNC_Public;
-				PyObject *is_event = PyObject_GetAttrString(value, (char *)"event");
-				if (is_event && PyObject_IsTrue(is_event))
-				{
-					func_flags |= FUNC_Event | FUNC_BlueprintEvent;
-				}
-				else if (!is_event)
-					PyErr_Clear();
-
-				PyObject *is_multicast = PyObject_GetAttrString(value, (char *)"multicast");
-				if (is_multicast && PyObject_IsTrue(is_multicast))
-				{
-					func_flags |= FUNC_NetMulticast;
-				}
-				else if (!is_multicast)
-					PyErr_Clear();
-				PyObject *is_server = PyObject_GetAttrString(value, (char *)"server");
-				if (is_server && PyObject_IsTrue(is_server))
-				{
-					func_flags |= FUNC_NetServer;
-				}
-				else if (!is_server)
-					PyErr_Clear();
-				PyObject *is_client = PyObject_GetAttrString(value, (char *)"client");
-				if (is_client && PyObject_IsTrue(is_client))
-				{
-					func_flags |= FUNC_NetClient;
-				}
-				else if (!is_client)
-					PyErr_Clear();
-				PyObject *is_reliable = PyObject_GetAttrString(value, (char *)"reliable");
-				if (is_reliable && PyObject_IsTrue(is_reliable))
-				{
-					func_flags |= FUNC_NetReliable;
-				}
-				else if (!is_reliable)
-					PyErr_Clear();
-
-
-				PyObject *is_pure = PyObject_GetAttrString(value, (char *)"pure");
-				if (is_pure && PyObject_IsTrue(is_pure))
-				{
-					func_flags |= FUNC_BlueprintPure;
-				}
-				else if (!is_pure)
-					PyErr_Clear();
-				PyObject *is_static = PyObject_GetAttrString(value, (char *)"static");
-				if (is_static && PyObject_IsTrue(is_static))
-				{
-					func_flags |= FUNC_Static;
-				}
-				else if (!is_static)
-					PyErr_Clear();
-				PyObject *override_name = PyObject_GetAttrString(value, (char *)"override");
-				if (override_name && PyUnicodeOrString_Check(override_name))
-				{
-					class_key = PyUnicode_AsUTF8(override_name);
-				}
-				else if (override_name && PyUnicodeOrString_Check(override_name))
-				{
-					class_key = PyUnicode_AsUTF8(override_name);
-				}
-				else if (!override_name)
-					PyErr_Clear();
-				if (!unreal_engine_add_function(new_class, class_key, value, func_flags))
-				{
-					UE_LOG(LogPython, Error, TEXT("unable to add function %s"), UTF8_TO_TCHAR(class_key));
-					return -1;
-				}
-				prop_added = true;
-			}
-
-
-			if (!prop_added)
-			{
-				UE_LOG(LogPython, Warning, TEXT("Adding %s as attr"), UTF8_TO_TCHAR(class_key));
-				PyObject_SetAttr((PyObject *)self, key, value);
-			}
-		}
-
-		if (PyDict_Size(py_additional_properties) > 0)
-		{
-			PyObject_SetAttrString((PyObject *)self, (char*)"__additional_uproperties__", py_additional_properties);
-		}
-
-		UPythonClass *new_u_py_class = (UPythonClass *)new_class;
-		// TODO: check if we can use this to decref the ue_PyUbject mapped to the class
-		new_u_py_class->py_uobject = self;
-		new_u_py_class->ClassConstructor = [](const FObjectInitializer &ObjectInitializer)
-		{
-			FScopePythonGIL gil;
-			UClass *u_class = ue_py_class_constructor_placeholder ? ue_py_class_constructor_placeholder : ObjectInitializer.GetClass();
-			ue_py_class_constructor_placeholder = nullptr;
-
-			UEPyClassConstructor(u_class->GetSuperClass(), ObjectInitializer);
-
-			if (UPythonClass *u_py_class_casted = Cast<UPythonClass>(u_class))
-			{
-				ue_PyUObject *new_self = ue_get_python_wrapper(ObjectInitializer.GetObj());
-				if (!new_self)
-				{
-					unreal_engine_py_log_error();
-					return;
-				}
-
-				// fill __dict__ from class
-				if (u_py_class_casted->py_uobject && u_py_class_casted->py_uobject->py_dict)
-				{
-					PyObject *found_additional_props = PyDict_GetItemString(u_py_class_casted->py_uobject->py_dict, (char *)"__additional_uproperties__");
-					// manage UProperties (and automatically maps multicast properties)
-					if (found_additional_props)
-					{
-						PyObject *keys = PyDict_Keys(found_additional_props);
-						Py_ssize_t items_len = PyList_Size(keys);
-						for (Py_ssize_t i = 0; i < items_len; i++)
-						{
-							PyObject *mc_key = PyList_GetItem(keys, i);
-							PyObject *mc_value = PyDict_GetItem(found_additional_props, mc_key);
-
-							char *mc_name = PyUnicode_AsUTF8(mc_key);
-							UProperty *u_property = ObjectInitializer.GetObj()->GetClass()->FindPropertyByName(FName(UTF8_TO_TCHAR(mc_name)));
-							if (u_property)
-							{
-								if (auto casted_prop = Cast<UMulticastDelegateProperty>(u_property))
-								{
-									FMulticastScriptDelegate multiscript_delegate = casted_prop->GetPropertyValue_InContainer(ObjectInitializer.GetObj());
-
-									FScriptDelegate script_delegate;
-									UPythonDelegate *py_delegate = NewObject<UPythonDelegate>();
-									py_delegate->SetPyCallable(mc_value);
-									py_delegate->SetSignature(casted_prop->SignatureFunction);
-									// avoid delegates to be destroyed by the GC
-									py_delegate->AddToRoot();
-
-									// fake UFUNCTION for bypassing checks
-									script_delegate.BindUFunction(py_delegate, FName("PyFakeCallable"));
-
-									// add the new delegate
-									multiscript_delegate.Add(script_delegate);
-
-									// re-assign multicast delegate
-									casted_prop->SetPropertyValue_InContainer(ObjectInitializer.GetObj(), multiscript_delegate);
-								}
-								else
-								{
-									PyObject_SetAttr((PyObject *)new_self, mc_key, mc_value);
-								}
-							}
-
-						}
-						Py_DECREF(keys);
-					}
-					else
-					{
-						PyErr_Clear();
-					}
-					PyObject *keys = PyDict_Keys(u_py_class_casted->py_uobject->py_dict);
-					Py_ssize_t keys_len = PyList_Size(keys);
-					for (Py_ssize_t i = 0; i < keys_len; i++)
-					{
-						PyObject *key = PyList_GetItem(keys, i);
-						PyObject *value = PyDict_GetItem(u_py_class_casted->py_uobject->py_dict, key);
-						if (PyUnicode_Check(key))
-						{
-							char *key_name = PyUnicode_AsUTF8(key);
-							if (!strcmp(key_name, (char *)"__additional_uproperties__"))
-								continue;
-						}
-						// special case to bound function to method
-						if (PyFunction_Check(value))
-						{
-							PyObject *bound_function = PyObject_CallMethod(value, (char*)"__get__", (char*)"O", (PyObject *)new_self);
-							if (bound_function)
-							{
-								PyObject_SetAttr((PyObject *)new_self, key, bound_function);
-								Py_DECREF(bound_function);
-							}
-							else
-							{
-								unreal_engine_py_log_error();
-							}
-						}
-						else
-						{
-							PyObject_SetAttr((PyObject *)new_self, key, value);
-						}
-					}
-					Py_DECREF(keys);
-				}
-				// call __init__
-				u_py_class_casted->CallPyConstructor(new_self);
-			}
-		};
-
-
-
-		if (self->py_dict)
-		{
-			ue_PyUObject *new_default_self = ue_get_python_wrapper(new_u_py_class->ClassDefaultObject);
-
-			if (!new_default_self)
-			{
-				unreal_engine_py_log_error();
-				UE_LOG(LogPython, Error, TEXT("unable to set dict on new ClassDefaultObject"));
-				return -1;
-			}
-			PyObject *keys = PyDict_Keys(self->py_dict);
-
-			Py_ssize_t keys_len = PyList_Size(keys);
-			for (Py_ssize_t i = 0; i < keys_len; i++)
-			{
-				PyObject *key = PyList_GetItem(keys, i);
-				PyObject *value = PyDict_GetItem(self->py_dict, key);
-				// special case to bound function to method
-				if (PyFunction_Check(value))
-				{
-					PyObject *bound_function = PyObject_CallMethod(value, (char*)"__get__", (char*)"O", (PyObject *)new_default_self);
-					if (bound_function)
-					{
-						PyObject_SetAttr((PyObject *)new_default_self, key, bound_function);
-						Py_DECREF(bound_function);
-					}
-					else
-					{
-						unreal_engine_py_log_error();
-					}
-				}
-				else
-				{
-					PyObject_SetAttr((PyObject *)new_default_self, key, value);
-				}
-			}
-			Py_DECREF(keys);
-		}
-
-		// add default uproperties values
-		if (py_additional_properties)
-		{
-			ue_PyUObject *new_default_self = ue_get_python_wrapper(new_u_py_class->ClassDefaultObject);
-			if (!new_default_self)
-			{
-				unreal_engine_py_log_error();
-				UE_LOG(LogPython, Error, TEXT("unable to set properties on new ClassDefaultObject"));
-				return -1;
-			}
-			PyObject *keys = PyDict_Keys(py_additional_properties);
-			Py_ssize_t keys_len = PyList_Size(keys);
-			for (Py_ssize_t i = 0; i < keys_len; i++)
-			{
-				PyObject *key = PyList_GetItem(keys, i);
-				PyObject *value = PyDict_GetItem(py_additional_properties, key);
-
-				PyObject_SetAttr((PyObject *)new_default_self, key, value);
-			}
-			Py_DECREF(keys);
-		}
-
-		// add custom constructor (__init__)
-		PyObject *py_init = PyDict_GetItemString(class_attributes, (char *)"__init__");
-		if (py_init && PyCallable_Check(py_init))
-		{
-			// fake initializer
-			FObjectInitializer initializer(new_u_py_class->ClassDefaultObject, nullptr, false, true);
-			new_u_py_class->SetPyConstructor(py_init);
-			ue_PyUObject *new_default_self = ue_get_python_wrapper(new_u_py_class->ClassDefaultObject);
-
-			if (!new_default_self)
-			{
-				unreal_engine_py_log_error();
-				UE_LOG(LogPython, Error, TEXT("unable to call __init__ on new ClassDefaultObject"));
-				return -1;
-			}
-
-			new_u_py_class->CallPyConstructor(new_default_self);
-		}
-
-	}
-
-	return 0;
-}
+int unreal_engine_py_init(ue_PyUObject *, PyObject *, PyObject *);
 
 void unreal_engine_init_py_module()
 {
 #if PY_MAJOR_VERSION >= 3
-	PyImport_AppendInittab("unreal_engine", init_unreal_engine);
 	PyObject *new_unreal_engine_module = PyImport_AddModule("unreal_engine");
 #else
 	PyObject *new_unreal_engine_module = Py_InitModule3("unreal_engine", NULL, unreal_engine_py_doc);
 #endif
+	ue_PyUObjectType.tp_new = PyType_GenericNew;
+	ue_PyUObjectType.tp_init = (initproc)unreal_engine_py_init;
+	ue_PyUObjectType.tp_dictoffset = offsetof(ue_PyUObject, py_dict);
 
+	if (PyType_Ready(&ue_PyUObjectType) < 0)
+		return;
+
+	Py_INCREF(&ue_PyUObjectType);
+	PyModule_AddObject(new_unreal_engine_module, "UObject", (PyObject *)&ue_PyUObjectType);
 
 	PyObject *unreal_engine_dict = PyModule_GetDict(new_unreal_engine_module);
 
@@ -1869,16 +1418,6 @@ void unreal_engine_init_py_module()
 		Py_DECREF(func);
 	}
 
-
-	ue_PyUObjectType.tp_new = PyType_GenericNew;
-	ue_PyUObjectType.tp_init = (initproc)unreal_engine_py_init;
-	ue_PyUObjectType.tp_dictoffset = offsetof(ue_PyUObject, py_dict);
-	if (PyType_Ready(&ue_PyUObjectType) < 0)
-		return;
-
-	Py_INCREF(&ue_PyUObjectType);
-	PyModule_AddObject(new_unreal_engine_module, "UObject", (PyObject *)&ue_PyUObjectType);
-
 	ue_python_init_fvector(new_unreal_engine_module);
 	ue_python_init_frotator(new_unreal_engine_module);
 	ue_python_init_ftransform(new_unreal_engine_module);
@@ -1886,6 +1425,7 @@ void unreal_engine_init_py_module()
 	ue_python_init_fcolor(new_unreal_engine_module);
 	ue_python_init_flinearcolor(new_unreal_engine_module);
 	ue_python_init_fquat(new_unreal_engine_module);
+
 
 	ue_python_init_frandomstream(new_unreal_engine_module);
 
@@ -1943,7 +1483,10 @@ void unreal_engine_init_py_module()
 
 	ue_python_init_iconsole_manager(new_unreal_engine_module);
 
+	ue_python_init_fslate_application(new_unreal_engine_module);
+
 #if WITH_EDITOR
+	ue_python_init_fmaterial_editor_utilities(new_unreal_engine_module);
 	ue_python_init_icollection_manager(new_unreal_engine_module);
 #endif
 
@@ -1997,6 +1540,40 @@ void unreal_engine_init_py_module()
 	PyDict_SetItemString(unreal_engine_dict, "CLASS_ABSTRACT", PyLong_FromUnsignedLongLong((uint64)CLASS_Abstract));
 	PyDict_SetItemString(unreal_engine_dict, "CLASS_INTERFACE", PyLong_FromUnsignedLongLong((uint64)CLASS_Interface));
 
+	// Objects
+	PyDict_SetItemString(unreal_engine_dict, "RF_NOFLAGS", PyLong_FromUnsignedLongLong((uint64)RF_NoFlags));
+	PyDict_SetItemString(unreal_engine_dict, "RF_PUBLIC", PyLong_FromUnsignedLongLong((uint64)RF_Public));
+	PyDict_SetItemString(unreal_engine_dict, "RF_STANDALONE", PyLong_FromUnsignedLongLong((uint64)RF_Standalone));
+	PyDict_SetItemString(unreal_engine_dict, "RF_MARKASNATIVE", PyLong_FromUnsignedLongLong((uint64)RF_MarkAsNative));
+	PyDict_SetItemString(unreal_engine_dict, "RF_TRANSACTIONAL", PyLong_FromUnsignedLongLong((uint64)RF_Transactional));
+	PyDict_SetItemString(unreal_engine_dict, "RF_CLASSDEFAULTOBJECT", PyLong_FromUnsignedLongLong((uint64)RF_ClassDefaultObject));
+	PyDict_SetItemString(unreal_engine_dict, "RF_ARCHETYPEOBJECT", PyLong_FromUnsignedLongLong((uint64)RF_ArchetypeObject));
+	PyDict_SetItemString(unreal_engine_dict, "RF_TRANSIENT", PyLong_FromUnsignedLongLong((uint64)RF_Transient));
+	PyDict_SetItemString(unreal_engine_dict, "RF_MARKASROOTSET", PyLong_FromUnsignedLongLong((uint64)RF_MarkAsRootSet));
+	PyDict_SetItemString(unreal_engine_dict, "RF_TAGGARBAGETEMP", PyLong_FromUnsignedLongLong((uint64)RF_TagGarbageTemp));
+	PyDict_SetItemString(unreal_engine_dict, "RF_NEEDINITIALIZATION", PyLong_FromUnsignedLongLong((uint64)RF_NeedInitialization));
+	PyDict_SetItemString(unreal_engine_dict, "RF_NEEDLOAD", PyLong_FromUnsignedLongLong((uint64)RF_NeedLoad));
+	PyDict_SetItemString(unreal_engine_dict, "RF_KEEPFORCOOKER", PyLong_FromUnsignedLongLong((uint64)RF_KeepForCooker));
+	PyDict_SetItemString(unreal_engine_dict, "RF_NEEDPOSTLOAD", PyLong_FromUnsignedLongLong((uint64)RF_NeedPostLoad));
+	PyDict_SetItemString(unreal_engine_dict, "RF_NEEDPOSTLOADSUBOBJECTS", PyLong_FromUnsignedLongLong((uint64)RF_NeedPostLoadSubobjects));
+	PyDict_SetItemString(unreal_engine_dict, "RF_NEWERVERSIONEXISTS", PyLong_FromUnsignedLongLong((uint64)RF_NewerVersionExists));
+	PyDict_SetItemString(unreal_engine_dict, "RF_BEGINDESTROYED", PyLong_FromUnsignedLongLong((uint64)RF_BeginDestroyed));
+	PyDict_SetItemString(unreal_engine_dict, "RF_FINISHDESTROYED", PyLong_FromUnsignedLongLong((uint64)RF_FinishDestroyed));
+	PyDict_SetItemString(unreal_engine_dict, "RF_BEINGREGENERATED", PyLong_FromUnsignedLongLong((uint64)RF_BeingRegenerated));
+	PyDict_SetItemString(unreal_engine_dict, "RF_DEFAULTSUBOBJECT", PyLong_FromUnsignedLongLong((uint64)RF_DefaultSubObject));
+	PyDict_SetItemString(unreal_engine_dict, "RF_WASLOADED", PyLong_FromUnsignedLongLong((uint64)RF_WasLoaded));
+	PyDict_SetItemString(unreal_engine_dict, "RF_TEXTEXPORTTRANSIENT", PyLong_FromUnsignedLongLong((uint64)RF_TextExportTransient));
+	PyDict_SetItemString(unreal_engine_dict, "RF_LOADCOMPLETED", PyLong_FromUnsignedLongLong((uint64)RF_LoadCompleted));
+	PyDict_SetItemString(unreal_engine_dict, "RF_INHERITABLECOMPONENTTEMPLATE", PyLong_FromUnsignedLongLong((uint64)RF_InheritableComponentTemplate));
+	PyDict_SetItemString(unreal_engine_dict, "RF_DUPLICATETRANSIENT", PyLong_FromUnsignedLongLong((uint64)RF_DuplicateTransient));
+	PyDict_SetItemString(unreal_engine_dict, "RF_STRONGREFONFRAME", PyLong_FromUnsignedLongLong((uint64)RF_StrongRefOnFrame));
+	PyDict_SetItemString(unreal_engine_dict, "RF_NONPIEDUPLICATETRANSIENT", PyLong_FromUnsignedLongLong((uint64)RF_NonPIEDuplicateTransient));
+	PyDict_SetItemString(unreal_engine_dict, "RF_DYNAMIC", PyLong_FromUnsignedLongLong((uint64)RF_Dynamic));
+
+#if ENGINE_MINOR_VERSION > 15
+	PyDict_SetItemString(unreal_engine_dict, "RF_WILLBELOADED", PyLong_FromUnsignedLongLong((uint64)RF_WillBeLoaded));
+#endif
+
 	// Properties
 	PyDict_SetItemString(unreal_engine_dict, "CPF_CONFIG", PyLong_FromUnsignedLongLong((uint64)CPF_Config));
 	PyDict_SetItemString(unreal_engine_dict, "CPF_GLOBAL_CONFIG", PyLong_FromUnsignedLongLong((uint64)CPF_GlobalConfig));
@@ -2027,16 +1604,19 @@ void unreal_engine_init_py_module()
 }
 
 
+
 // utility functions
 
-ue_PyUObject *ue_get_python_wrapper(UObject *ue_obj)
+ue_PyUObject *ue_get_python_uobject(UObject *ue_obj)
 {
-	if (!ue_obj || !ue_obj->IsValidLowLevel() || ue_obj->IsPendingKillOrUnreachable())
+	if (!ue_obj)
 		return nullptr;
-	std::map<UObject *, ue_PyUObject *>::iterator it = ue_python_gc.find(ue_obj);
-	// not found ??
-	if (it == ue_python_gc.end())
+
+	ue_PyUObject *ret = FUnrealEnginePythonHouseKeeper::Get()->GetPyUObject(ue_obj);
+	if (!ret)
 	{
+		if (!ue_obj->IsValidLowLevel() || ue_obj->IsPendingKillOrUnreachable())
+			return nullptr;
 
 		ue_PyUObject *ue_py_object = (ue_PyUObject *)PyObject_New(ue_PyUObject, &ue_PyUObjectType);
 		if (!ue_py_object)
@@ -2044,19 +1624,29 @@ ue_PyUObject *ue_get_python_wrapper(UObject *ue_obj)
 			return nullptr;
 		}
 		ue_py_object->ue_object = ue_obj;
-		ue_py_object->python_delegates_gc = new std::list<UPythonDelegate *>;
+		ue_py_object->py_proxy = nullptr;
+		ue_py_object->auto_rooted = 0;
 		ue_py_object->py_dict = PyDict_New();
 
-		ue_python_gc[ue_obj] = ue_py_object;
+		FUnrealEnginePythonHouseKeeper::Get()->RegisterPyUObject(ue_obj, ue_py_object);
 
 #if defined(UEPY_MEMORY_DEBUG)
 		UE_LOG(LogPython, Warning, TEXT("CREATED UPyObject at %p for %p %s"), ue_py_object, ue_obj, *ue_obj->GetName());
 #endif
-		//Py_INCREF(ue_py_object);
 		return ue_py_object;
 	}
+	return ret;
 
-	return it->second;
+}
+
+ue_PyUObject *ue_get_python_uobject_inc(UObject *ue_obj)
+{
+	ue_PyUObject *ret = ue_get_python_uobject(ue_obj);
+	if (ret)
+	{
+		Py_INCREF(ret);
+	}
+	return ret;
 }
 
 void unreal_engine_py_log_error()
@@ -2260,11 +1850,7 @@ PyObject *ue_py_convert_property(UProperty *prop, uint8 *buffer)
 		auto value = casted_prop->GetObjectPropertyValue_InContainer(buffer);
 		if (value)
 		{
-			ue_PyUObject *ret = ue_get_python_wrapper(value);
-			if (!ret)
-				return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
-			Py_INCREF(ret);
-			return (PyObject *)ret;
+			Py_RETURN_UOBJECT(value);
 		}
 		Py_RETURN_NONE;
 	}
@@ -2274,11 +1860,7 @@ PyObject *ue_py_convert_property(UProperty *prop, uint8 *buffer)
 		auto value = casted_prop->GetPropertyValue_InContainer(buffer);
 		if (value)
 		{
-			ue_PyUObject *ret = ue_get_python_wrapper(value);
-			if (!ret)
-				return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
-			Py_INCREF(ret);
-			return (PyObject *)ret;
+			Py_RETURN_UOBJECT(value);
 		}
 		return PyErr_Format(PyExc_Exception, "invalid UClass type for %s", TCHAR_TO_UTF8(*casted_prop->GetName()));
 	}
@@ -2330,11 +1912,7 @@ PyObject *ue_py_convert_property(UProperty *prop, uint8 *buffer)
 		UObject *strong_obj = value.Get();
 		if (strong_obj)
 		{
-			ue_PyUObject *ret = ue_get_python_wrapper(strong_obj);
-			if (!ret)
-				return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
-			Py_INCREF(ret);
-			return (PyObject *)ret;
+			Py_RETURN_UOBJECT(strong_obj);
 		}
 		// nullptr
 		Py_INCREF(Py_None);
@@ -2343,11 +1921,7 @@ PyObject *ue_py_convert_property(UProperty *prop, uint8 *buffer)
 
 	if (auto casted_prop = Cast<UMulticastDelegateProperty>(prop))
 	{
-		ue_PyUObject *ret = ue_get_python_wrapper(casted_prop);
-		if (!ret)
-			return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
-		Py_INCREF(ret);
-		return (PyObject *)ret;
+		Py_RETURN_UOBJECT(casted_prop);
 	}
 
 	if (auto casted_prop = Cast<UArrayProperty>(prop))
@@ -2900,7 +2474,7 @@ void ue_bind_events_for_py_class_by_attribute(UObject *u_obj, PyObject *py_class
 					{
 						if (n == 1)
 						{
-							if (!ue_bind_pyevent(ue_get_python_wrapper(actor), parts[0], item, true))
+							if (!ue_bind_pyevent(ue_get_python_uobject(actor), parts[0], item, true))
 							{
 								unreal_engine_py_log_error();
 							}
@@ -2912,7 +2486,7 @@ void ue_bind_events_for_py_class_by_attribute(UObject *u_obj, PyObject *py_class
 							{
 								if (component->GetFName() == FName(*parts[0]))
 								{
-									if (!ue_bind_pyevent(ue_get_python_wrapper(component), parts[1], item, true))
+									if (!ue_bind_pyevent(ue_get_python_uobject(component), parts[1], item, true))
 									{
 										unreal_engine_py_log_error();
 									}
@@ -3013,28 +2587,40 @@ PyObject *py_ue_ufunction_call(UFunction *u_function, UObject *u_obj, PyObject *
 		}
 	}
 
+	//NOTE: u_function->PropertiesSize maps to local variable uproperties + ufunction paramaters uproperties
 	uint8 *buffer = (uint8 *)FMemory_Alloca(u_function->ParmsSize);
 	FMemory::Memzero(buffer, u_function->ParmsSize);
-
 	// initialize args
-	TFieldIterator<UProperty> IArgs(u_function);
-	for (; IArgs && (IArgs->PropertyFlags & CPF_Parm); ++IArgs)
+	for (TFieldIterator<UProperty> IArgs(u_function); IArgs && IArgs->HasAnyPropertyFlags(CPF_Parm); ++IArgs)
 	{
 		UProperty *prop = *IArgs;
-		prop->InitializeValue_InContainer(buffer);
-#if WITH_EDITOR
-		FString default_key = FString("CPP_Default_") + prop->GetName();
-		FString default_key_value = u_function->GetMetaData(FName(*default_key));
-		if (!default_key_value.IsEmpty())
+		if (!prop->HasAnyPropertyFlags(CPF_ZeroConstructor))
 		{
+			prop->InitializeValue_InContainer(buffer);
+		}
+
+		//UObject::CallFunctionByNameWithArguments() only does this part on non return value params
+		if ((IArgs->PropertyFlags & (CPF_Parm | CPF_ReturnParm)) == CPF_Parm)
+		{
+			if (!prop->IsInContainer(u_function->ParmsSize))
+			{
+				return PyErr_Format(PyExc_Exception, "Attempting to import func param property that's out of bounds. %s", *u_function->GetName());
+			}
+#if WITH_EDITOR
+			FString default_key = FString("CPP_Default_") + prop->GetName();
+			FString default_key_value = u_function->GetMetaData(FName(*default_key));
+			if (!default_key_value.IsEmpty())
+			{
 #if ENGINE_MINOR_VERSION >= 17
-			prop->ImportText(*default_key_value, prop->ContainerPtrToValuePtr<uint8>(buffer), PPF_None, NULL);
+				prop->ImportText(*default_key_value, prop->ContainerPtrToValuePtr<uint8>(buffer), PPF_None, NULL);
 #else
-			prop->ImportText(*default_key_value, prop->ContainerPtrToValuePtr<uint8>(buffer), PPF_Localized, NULL);
+				prop->ImportText(*default_key_value, prop->ContainerPtrToValuePtr<uint8>(buffer), PPF_Localized, NULL);
+#endif
+			}
 #endif
 		}
-#endif
 	}
+
 
 	Py_ssize_t tuple_len = PyTuple_Size(args);
 
@@ -3071,7 +2657,7 @@ PyObject *py_ue_ufunction_call(UFunction *u_function, UObject *u_obj, PyObject *
 				}
 			}
 		}
-		if ((PArgs->PropertyFlags & (CPF_ConstParm | CPF_OutParm)) == CPF_OutParm)
+		if (prop->HasAnyPropertyFlags(CPF_OutParm) && (prop->IsA<UArrayProperty>() || prop->HasAnyPropertyFlags(CPF_ConstParm) == false))
 		{
 			has_out_params++;
 		}
@@ -3115,7 +2701,7 @@ PyObject *py_ue_ufunction_call(UFunction *u_function, UObject *u_obj, PyObject *
 		for (; OProps; ++OProps)
 		{
 			UProperty *prop = *OProps;
-			if ((prop->GetPropertyFlags() & (CPF_ConstParm | CPF_OutParm)) == CPF_OutParm)
+			if (prop->HasAnyPropertyFlags(CPF_OutParm) && (prop->IsA<UArrayProperty>() || prop->HasAnyPropertyFlags(CPF_ConstParm) == false))
 			{
 				// skip return param as it must be always the first
 				if (prop->GetPropertyFlags() & CPF_ReturnParm)
@@ -3155,8 +2741,7 @@ PyObject *ue_bind_pyevent(ue_PyUObject *u_obj, FString event_name, PyObject *py_
 	{
 		if (fail_on_wrong_property)
 			return PyErr_Format(PyExc_Exception, "unable to find event property %s", TCHAR_TO_UTF8(*event_name));
-		Py_INCREF(Py_None);
-		return Py_None;
+		Py_RETURN_NONE;
 	}
 
 	if (auto casted_prop = Cast<UMulticastDelegateProperty>(u_property))
@@ -3164,13 +2749,7 @@ PyObject *ue_bind_pyevent(ue_PyUObject *u_obj, FString event_name, PyObject *py_
 		FMulticastScriptDelegate multiscript_delegate = casted_prop->GetPropertyValue_InContainer(u_obj->ue_object);
 
 		FScriptDelegate script_delegate;
-		UPythonDelegate *py_delegate = NewObject<UPythonDelegate>();
-		py_delegate->SetPyCallable(py_callable);
-		py_delegate->SetSignature(casted_prop->SignatureFunction);
-		// avoid delegates to be destroyed by the GC
-		py_delegate->AddToRoot();
-		u_obj->python_delegates_gc->push_back(py_delegate);
-
+		UPythonDelegate *py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewDelegate(u_obj->ue_object, py_callable, casted_prop->SignatureFunction);
 		// fake UFUNCTION for bypassing checks
 		script_delegate.BindUFunction(py_delegate, FName("PyFakeCallable"));
 
@@ -3186,8 +2765,7 @@ PyObject *ue_bind_pyevent(ue_PyUObject *u_obj, FString event_name, PyObject *py_
 			return PyErr_Format(PyExc_Exception, "property %s is not an event", TCHAR_TO_UTF8(*event_name));
 	}
 
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 UFunction *unreal_engine_add_function(UClass *u_class, char *name, PyObject *py_callable, uint32 function_flags)
@@ -3480,7 +3058,11 @@ UFunction *unreal_engine_add_function(UClass *u_class, char *name, PyObject *py_
 	function->FunctionFlags = function_flags;
 #endif
 
+#if ENGINE_MINOR_VERSION > 18
+	function->SetNativeFunc((FNativeFuncPtr)&UPythonFunction::CallPythonCallable);
+#else
 	function->SetNativeFunc((Native)&UPythonFunction::CallPythonCallable);
+#endif
 
 	function->Next = u_class->Children;
 
@@ -3533,3 +3115,43 @@ FGuid *ue_py_check_fguid(PyObject *py_obj)
 
 	return nullptr;
 }
+uint8 * do_ue_py_check_struct(PyObject *py_obj, UScriptStruct* chk_u_struct)
+{
+	ue_PyUScriptStruct *ue_py_struct = py_ue_is_uscriptstruct(py_obj);
+	if (!ue_py_struct)
+	{
+		return nullptr;
+	}
+
+	if (ue_py_struct->u_struct == chk_u_struct)
+	{
+		return ue_py_struct->data;
+	}
+
+	return nullptr;
+}
+
+bool do_ue_py_check_childstruct(PyObject *py_obj, UScriptStruct* parent_u_struct)
+{
+	ue_PyUScriptStruct *ue_py_struct = py_ue_is_uscriptstruct(py_obj);
+	if (!ue_py_struct)
+	{
+		return false;
+	}
+
+	return ue_py_struct->u_struct->IsChildOf(parent_u_struct);
+}
+
+
+
+#if PY_MAJOR_VERSION >= 3
+static PyObject *init_unreal_engine()
+{
+	
+	PyObject *new_unreal_engine_module = PyModule_Create(&unreal_engine_module);
+	if (!new_unreal_engine_module)
+		return nullptr;
+
+	return new_unreal_engine_module;
+}
+#endif

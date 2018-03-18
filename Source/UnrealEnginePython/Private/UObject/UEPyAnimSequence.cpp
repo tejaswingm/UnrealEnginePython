@@ -15,11 +15,7 @@ PyObject *py_ue_anim_get_skeleton(ue_PyUObject * self, PyObject * args) {
 		Py_RETURN_NONE;
 	}
 
-	ue_PyUObject *ret = ue_get_python_wrapper((UObject *)skeleton);
-	if (!ret)
-		return PyErr_Format(PyExc_Exception, "uobject is in invalid state");
-	Py_INCREF(ret);
-	return (PyObject *)ret;
+	Py_RETURN_UOBJECT((UObject *)skeleton);
 }
 
 
@@ -95,6 +91,22 @@ PyObject *py_ue_anim_sequence_add_new_raw_track(ue_PyUObject * self, PyObject * 
 
 	return PyLong_FromLong(index);
 }
+
+PyObject *py_ue_add_anim_composite_section(ue_PyUObject * self, PyObject * args) {
+    ue_py_check(self);
+
+    char *name;
+    float time;
+    if (!PyArg_ParseTuple(args, "sf:add_anim_composite_section", &name, &time))
+        return nullptr;
+
+    UAnimMontage *anim = ue_py_check_type<UAnimMontage>(self);
+    if (!anim)
+        return PyErr_Format(PyExc_Exception, "UObject is not a UAnimMontage.");
+
+    return PyLong_FromLong(anim->AddAnimCompositeSection(FName(UTF8_TO_TCHAR(name)), time));
+}
+
 #endif
 #endif
 
@@ -117,23 +129,6 @@ PyObject *py_ue_anim_set_skeleton(ue_PyUObject * self, PyObject * args) {
 	
 	Py_RETURN_NONE;
 }
-
-#if WITH_EDITOR
-PyObject *py_ue_add_anim_composite_section(ue_PyUObject * self, PyObject * args) {
-	ue_py_check(self);
-
-	char *name;
-	float time;
-	if (!PyArg_ParseTuple(args, "sf:add_anim_composite_section", &name, &time))
-		return nullptr;
-
-	UAnimMontage *anim = ue_py_check_type<UAnimMontage>(self);
-	if (!anim)
-		return PyErr_Format(PyExc_Exception, "UObject is not a UAnimMontage.");
-
-	return PyLong_FromLong(anim->AddAnimCompositeSection(FName(UTF8_TO_TCHAR(name)), time));
-}
-#endif
 
 PyObject *py_ue_get_blend_parameter(ue_PyUObject * self, PyObject * args) {
 	ue_py_check(self);
