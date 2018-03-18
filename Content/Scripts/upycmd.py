@@ -78,6 +78,27 @@ def run(process, path=_PythonHomePath, verbose=True):
 		ue.log(stdoutdata[1])
 	return stdoutdata[1] #return the data for dependent functions
 
+def runStreaming(process, callback=None, path=_PythonHomePath, verbose=True):
+	#todo: change folder
+	fullcommand = FolderCommand(path) + process
+
+	if verbose:
+		print("Started cmd <" + fullcommand + ">")
+
+	#streaming version
+	popenobj = subprocess.Popen(fullcommand, stdout=subprocess.PIPE)
+	output = ''
+	for line in iter(process.stdout.readline, ''):
+		#sys.stdout.write(line)
+		print(line)
+		output += line
+
+
+	if verbose:
+		print("cmd Result: ")
+		print(output)
+	return output #return the data for dependent functions
+
 #convenience override
 def runLogOutput(process, path=_PythonHomePath):
 	fullcommand = FolderCommand(path) + process
