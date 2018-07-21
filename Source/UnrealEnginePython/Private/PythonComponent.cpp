@@ -153,7 +153,6 @@ void UPythonComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 		Py_XDECREF(ep_ret);
 	}
-	Py_DECREF(bp_ret);
 
 	Super::EndPlay(EndPlayReason);
 }

@@ -1,8 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "PipConsoleManager.h"
 #include "UnrealEnginePythonPrivatePCH.h"
 #include "IPluginManager.h"
-#include "PipConsoleManager.h"
+
 
 UPipConsoleManager::UPipConsoleManager(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)

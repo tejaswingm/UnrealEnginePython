@@ -435,12 +435,6 @@ void FUnrealEnginePythonModule::StartupModule()
 	}
 	else
 	{
-<<<<<<< HEAD
-		// TODO gracefully manage the error
-		UE_LOG(LogPython, Warning, TEXT("ue_site not found (if you don't use the startup file ignore this warning)"));
-		//unreal_engine_py_log_error();
-	}
-=======
 #if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
 		if (PyErr_ExceptionMatches(PyExc_ModuleNotFoundError))
 		{
@@ -455,7 +449,6 @@ void FUnrealEnginePythonModule::StartupModule()
 		unreal_engine_py_log_error();
 #endif
 		}
->>>>>>> pr/9
 
 	// release the GIL
 	PyThreadState *UEPyGlobalState = PyEval_SaveThread();
@@ -635,7 +628,7 @@ PyObject *ue_py_register_module(const char *name)
 
 void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)
 {
-	PythonGILAcquire();
+	FScopePythonGIL gil;
 
 	PyObject *py_sys = PyImport_ImportModule("sys");
 	PyObject *py_sys_dict = PyModule_GetDict(py_sys);
@@ -644,8 +637,6 @@ void FUnrealEnginePythonModule::AddPathToSysPath(const FString& Path)
 	char *charPath = TCHAR_TO_UTF8(*Path);
 	PyObject *py_scripts_path = PyUnicode_FromString(charPath);
 	PyList_Insert(py_path, 0, py_scripts_path);
-
-	PythonGILRelease();
 }
 
 void FUnrealEnginePythonModule::AddPythonDependentPlugin(const FString& PluginName)
@@ -660,7 +651,7 @@ void FUnrealEnginePythonModule::AddPythonDependentPlugin(const FString& PluginNa
 	FString PyModulePath = FString::Printf(TEXT("%s/upymodule.json"), *ScriptsPath);
 	FString RunImport = FString::Printf(TEXT("import upymodule_importer\nupymodule_importer.parseJson('%s')"), *PyModulePath);
 
- 	PythonGILAcquire();
+	FScopePythonGIL gil;
 
 	if (PyRun_SimpleString(TCHAR_TO_UTF8(*RunImport)) == 0) {
 		UE_LOG(LogPython, Log, TEXT("%s Plugin upymodule.json parsed"), *PluginName);
@@ -668,8 +659,6 @@ void FUnrealEnginePythonModule::AddPythonDependentPlugin(const FString& PluginNa
 	else {
 		unreal_engine_py_log_error();
 	}
-
-	PythonGILRelease();
 }
 
 #undef LOCTEXT_NAMESPACE

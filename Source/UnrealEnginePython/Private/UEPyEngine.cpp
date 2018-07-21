@@ -770,16 +770,10 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 
 	FGraphEventRef task = FFunctionGraphTask::CreateAndDispatchWhenReady([&, py_callable_s, py_params_s]() {
 		//UE_LOG(LogPython, Log, TEXT("In task graph, are in game thread? %d"), IsInGameThread());
-
-<<<<<<< HEAD
-=======
-
-	FGraphEventRef task = FFunctionGraphTask::CreateAndDispatchWhenReady([&]() {
->>>>>>> pr/9
 		FScopePythonGIL gil;
 		PyObject *ret = nullptr;
 		PyObject *py_tuple_params = nullptr;
-		
+
 		//do we have parameters?
 		if (py_params_s)
 		{
@@ -793,16 +787,14 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 		}
 
 		//did we get a valid return from our call?
-		if (ret) 
+		if (ret)
 		{
 			Py_DECREF(ret);
 		}
-		else 
+		else
 		{
 			unreal_engine_py_log_error();
 		}
-<<<<<<< HEAD
-		
 		if (py_params_s)
 		{
 			Py_DECREF(py_params_s);
@@ -813,21 +805,9 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 		}
 		Py_DECREF(py_callable_s);
 	}, TStatId(), nullptr, ENamedThreads::GameThread);
-	
+
 	Py_INCREF(Py_None);
 	return Py_None;
-=======
-		Py_DECREF(py_callable);
-	}, TStatId(), nullptr, (ENamedThreads::Type)named_thread);
-
-
-	Py_BEGIN_ALLOW_THREADS;
-	FTaskGraphInterface::Get().WaitUntilTaskCompletes(task);
-	Py_END_ALLOW_THREADS;
-	// TODO Implement signal triggering in addition to WaitUntilTaskCompletes
-	// FTaskGraphInterface::Get().TriggerEventWhenTaskCompletes
-
-	Py_RETURN_NONE;
 }
 
 
@@ -862,7 +842,6 @@ PyObject *py_unreal_engine_main_thread_call(PyObject * self, PyObject * args)
 	Py_END_ALLOW_THREADS;
 
 	Py_RETURN_NONE;
->>>>>>> pr/9
 }
 #endif
 

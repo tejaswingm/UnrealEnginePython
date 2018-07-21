@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Runtime/Engine/Classes/GameFramework/CheatManager.h"
 #include "PipConsoleManager.generated.h"
 
 /**
