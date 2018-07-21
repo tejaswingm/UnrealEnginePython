@@ -1,6 +1,6 @@
-#include "UnrealEnginePythonPrivatePCH.h"
-#include "PyPawn.h"
 
+#include "PyPawn.h"
+#include "UEPyModule.h"
 
 APyPawn::APyPawn()
 {
@@ -225,7 +225,7 @@ FString APyPawn::CallPythonPawnMethodString(FString method_name)
 		return FString();
 	}
 
-	char *str_ret = PyUnicode_AsUTF8(py_str);
+	const char *str_ret = UEPyUnicode_AsUTF8(py_str);
 
 	FString ret_fstring = FString(UTF8_TO_TCHAR(str_ret));
 

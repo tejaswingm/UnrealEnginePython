@@ -1,14 +1,22 @@
-#include "UnrealEnginePythonPrivatePCH.h"
+#include "UEPyObject.h"
 
 #include "PythonDelegate.h"
 #include "PythonFunction.h"
+#include "Components/ActorComponent.h"
+#include "Engine/UserDefinedEnum.h"
 
 #if WITH_EDITOR
 #include "Runtime/AssetRegistry/Public/AssetRegistryModule.h"
 #include "ObjectTools.h"
 #include "UnrealEd.h"
 #include "Runtime/Core/Public/HAL/FeedbackContextAnsi.h"
+
+#include "Wrappers/UEPyFObjectThumbnail.h"
 #endif
+
+#include "Runtime/Core/Public/Misc/OutputDeviceNull.h"
+#include "Runtime/CoreUObject/Public/Serialization/ObjectWriter.h"
+#include "Runtime/CoreUObject/Public/Serialization/ObjectReader.h"
 
 PyObject *py_ue_get_class(ue_PyUObject * self, PyObject * args)
 {
@@ -79,9 +87,15 @@ PyObject *py_ue_set_obj_flags(ue_PyUObject * self, PyObject * args)
 	ue_py_check(self);
 
 	uint64 flags;
-	if (!PyArg_ParseTuple(args, "K:set_obj_flags", &flags))
+	PyObject *py_reset = nullptr;
+	if (!PyArg_ParseTuple(args, "K|O:set_obj_flags", &flags, &py_reset))
 	{
 		return nullptr;
+	}
+
+	if (py_reset && PyObject_IsTrue(py_reset))
+	{
+		self->ue_object->ClearFlags(self->ue_object->GetFlags());
 	}
 
 	self->ue_object->SetFlags((EObjectFlags)flags);
@@ -89,6 +103,31 @@ PyObject *py_ue_set_obj_flags(ue_PyUObject * self, PyObject * args)
 	Py_RETURN_NONE;
 }
 
+PyObject *py_ue_clear_obj_flags(ue_PyUObject * self, PyObject * args)
+{
+
+	ue_py_check(self);
+
+	uint64 flags;
+	if (!PyArg_ParseTuple(args, "K:clear_obj_flags", &flags))
+	{
+		return nullptr;
+	}
+
+	self->ue_object->ClearFlags((EObjectFlags)flags);
+
+	Py_RETURN_NONE;
+}
+
+PyObject *py_ue_reset_obj_flags(ue_PyUObject * self, PyObject * args)
+{
+
+	ue_py_check(self);
+
+	self->ue_object->ClearFlags(self->ue_object->GetFlags());
+
+	Py_RETURN_NONE;
+}
 
 #if WITH_EDITOR
 PyObject *py_ue_class_set_config_name(ue_PyUObject * self, PyObject * args)
@@ -287,7 +326,9 @@ PyObject *py_ue_post_edit_change(ue_PyUObject *self, PyObject * args)
 	ue_py_check(self);
 
 #if WITH_EDITOR
+	Py_BEGIN_ALLOW_THREADS;
 	self->ue_object->PostEditChange();
+	Py_END_ALLOW_THREADS;
 #endif
 	Py_RETURN_NONE;
 }
@@ -321,8 +362,10 @@ PyObject *py_ue_post_edit_change_property(ue_PyUObject *self, PyObject * args)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", prop_name);
 
 #if WITH_EDITOR
+	Py_BEGIN_ALLOW_THREADS;
 	FPropertyChangedEvent changed(prop, change_type);
 	self->ue_object->PostEditChangeProperty(changed);
+	Py_END_ALLOW_THREADS;
 #endif
 	Py_RETURN_NONE;
 }
@@ -332,7 +375,9 @@ PyObject *py_ue_modify(ue_PyUObject *self, PyObject * args)
 	ue_py_check(self);
 
 #if WITH_EDITOR
+	Py_BEGIN_ALLOW_THREADS;
 	self->ue_object->Modify();
+	Py_END_ALLOW_THREADS;
 #endif
 	Py_RETURN_NONE;
 }
@@ -368,7 +413,9 @@ PyObject *py_ue_pre_edit_change(ue_PyUObject *self, PyObject * args)
 	}
 
 #if WITH_EDITOR
+	Py_BEGIN_ALLOW_THREADS;
 	self->ue_object->PreEditChange(prop);
+	Py_END_ALLOW_THREADS;
 #endif
 	Py_RETURN_NONE;
 }
@@ -490,7 +537,7 @@ PyObject *py_ue_call_function(ue_PyUObject * self, PyObject * args, PyObject *kw
 
 	if (PyUnicodeOrString_Check(func_id))
 	{
-		function = self->ue_object->FindFunction(FName(UTF8_TO_TCHAR(PyUnicode_AsUTF8(func_id))));
+		function = self->ue_object->FindFunction(FName(UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(func_id))));
 	}
 
 	if (!function)
@@ -554,8 +601,7 @@ PyObject *py_ue_set_name(ue_PyUObject *self, PyObject * args)
 
 	if (self->ue_object->Rename(UTF8_TO_TCHAR(name)))
 	{
-		Py_INCREF(Py_True);
-		return Py_True;
+		Py_RETURN_TRUE;
 	}
 
 	Py_RETURN_FALSE;
@@ -646,7 +692,9 @@ PyObject *py_ue_save_config(ue_PyUObject *self, PyObject * args)
 
 	ue_py_check(self);
 
+	Py_BEGIN_ALLOW_THREADS;
 	self->ue_object->SaveConfig();
+	Py_END_ALLOW_THREADS;
 
 	Py_RETURN_NONE;
 }
@@ -658,9 +706,10 @@ PyObject *py_ue_set_property(ue_PyUObject *self, PyObject * args)
 
 	char *property_name;
 	PyObject *property_value;
-	if (!PyArg_ParseTuple(args, "sO:set_property", &property_name, &property_value))
+	int index = 0;
+	if (!PyArg_ParseTuple(args, "sO|i:set_property", &property_name, &property_value, &index))
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	UStruct *u_struct = nullptr;
@@ -679,7 +728,7 @@ PyObject *py_ue_set_property(ue_PyUObject *self, PyObject * args)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
 
 
-	if (!ue_py_convert_pyobject(property_value, u_property, (uint8 *)self->ue_object))
+	if (!ue_py_convert_pyobject(property_value, u_property, (uint8 *)self->ue_object, index))
 	{
 		return PyErr_Format(PyExc_Exception, "unable to set property %s", property_name);
 	}
@@ -709,14 +758,17 @@ PyObject *py_ue_set_property_flags(ue_PyUObject *self, PyObject * args)
 	else
 	{
 		u_struct = (UStruct *)self->ue_object->GetClass();
-	}
+}
 
 	UProperty *u_property = u_struct->FindPropertyByName(FName(UTF8_TO_TCHAR(property_name)));
 	if (!u_property)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
 
-
+#if ENGINE_MINOR_VERSION < 20
 	u_property->SetPropertyFlags(flags);
+#else
+	u_property->SetPropertyFlags((EPropertyFlags)flags);
+#endif
 	Py_RETURN_NONE;
 }
 
@@ -748,9 +800,13 @@ PyObject *py_ue_add_property_flags(ue_PyUObject *self, PyObject * args)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
 
 
+#if ENGINE_MINOR_VERSION < 20
 	u_property->SetPropertyFlags(u_property->GetPropertyFlags() | flags);
+#else
+	u_property->SetPropertyFlags(u_property->GetPropertyFlags() | (EPropertyFlags)flags);
+#endif
 	Py_RETURN_NONE;
-}
+	}
 
 PyObject *py_ue_get_property_flags(ue_PyUObject *self, PyObject * args)
 {
@@ -909,11 +965,15 @@ PyObject *py_ue_call(ue_PyUObject *self, PyObject * args)
 	char *call_args;
 	if (!PyArg_ParseTuple(args, "s:call", &call_args))
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	FOutputDeviceNull od_null;
-	if (!self->ue_object->CallFunctionByNameWithArguments(UTF8_TO_TCHAR(call_args), od_null, NULL, true))
+	bool success = false;
+	Py_BEGIN_ALLOW_THREADS;
+	success = self->ue_object->CallFunctionByNameWithArguments(UTF8_TO_TCHAR(call_args), od_null, NULL, true);
+	Py_END_ALLOW_THREADS;
+	if (!success)
 	{
 		return PyErr_Format(PyExc_Exception, "error while calling \"%s\"", call_args);
 	}
@@ -929,7 +989,7 @@ PyObject *py_ue_broadcast(ue_PyUObject *self, PyObject *args)
 	char *property_name;
 	if (!PyArg_ParseTuple(args, "s:broadcast", &property_name))
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	UProperty *u_property = self->ue_object->GetClass()->FindPropertyByName(FName(UTF8_TO_TCHAR(property_name)));
@@ -938,10 +998,12 @@ PyObject *py_ue_broadcast(ue_PyUObject *self, PyObject *args)
 
 	if (auto casted_prop = Cast<UMulticastDelegateProperty>(u_property))
 	{
+		Py_BEGIN_ALLOW_THREADS;
 		FMulticastScriptDelegate multiscript_delegate = casted_prop->GetPropertyValue_InContainer(self->ue_object);
 		uint8 *parms = (uint8 *)FMemory_Alloca(casted_prop->SignatureFunction->PropertiesSize);
 		FMemory::Memzero(parms, casted_prop->SignatureFunction->PropertiesSize);
 		multiscript_delegate.ProcessMulticastDelegate<UObject>(parms);
+		Py_END_ALLOW_THREADS;
 	}
 	else
 	{
@@ -957,7 +1019,37 @@ PyObject *py_ue_get_property(ue_PyUObject *self, PyObject * args)
 	ue_py_check(self);
 
 	char *property_name;
-	if (!PyArg_ParseTuple(args, "s:get_property", &property_name))
+	int index = 0;
+	if (!PyArg_ParseTuple(args, "s|i:get_property", &property_name, &index))
+	{
+		return nullptr;
+	}
+
+	UStruct *u_struct = nullptr;
+
+	if (self->ue_object->IsA<UClass>())
+	{
+		u_struct = (UStruct *)self->ue_object;
+	}
+	else
+	{
+		u_struct = (UStruct *)self->ue_object->GetClass();
+	}
+
+	UProperty *u_property = u_struct->FindPropertyByName(FName(UTF8_TO_TCHAR(property_name)));
+	if (!u_property)
+		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
+
+	return ue_py_convert_property(u_property, (uint8 *)self->ue_object, index);
+}
+
+PyObject *py_ue_get_property_array_dim(ue_PyUObject *self, PyObject * args)
+{
+
+	ue_py_check(self);
+
+	char *property_name;
+	if (!PyArg_ParseTuple(args, "s:get_property_array_dim", &property_name))
 	{
 		return NULL;
 	}
@@ -977,7 +1069,7 @@ PyObject *py_ue_get_property(ue_PyUObject *self, PyObject * args)
 	if (!u_property)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
 
-	return ue_py_convert_property(u_property, (uint8 *)self->ue_object);
+	return PyLong_FromLongLong(u_property->ArrayDim);
 }
 
 #if WITH_EDITOR
@@ -1135,12 +1227,10 @@ PyObject *py_ue_is_rooted(ue_PyUObject *self, PyObject * args)
 
 	if (self->ue_object->IsRooted())
 	{
-		Py_INCREF(Py_True);
-		return Py_True;
+		Py_RETURN_TRUE;
 	}
 
-	Py_INCREF(Py_False);
-	return Py_False;
+	Py_RETURN_FALSE;
 }
 
 
@@ -1151,8 +1241,7 @@ PyObject *py_ue_add_to_root(ue_PyUObject *self, PyObject * args)
 
 	self->ue_object->AddToRoot();
 
-	Py_INCREF(Py_None);
-	return Py_None;
+	Py_RETURN_NONE;
 }
 
 PyObject *py_ue_auto_root(ue_PyUObject *self, PyObject * args)
@@ -1195,6 +1284,38 @@ PyObject *py_ue_bind_event(ue_PyUObject * self, PyObject * args)
 	}
 
 	return ue_bind_pyevent(self, FString(event_name), py_callable, true);
+}
+
+PyObject *py_ue_delegate_bind_ufunction(ue_PyUObject * self, PyObject * args)
+{
+	ue_py_check(self);
+
+	char *delegate_name;
+	PyObject *py_obj;
+	char *fname;
+
+	if (!PyArg_ParseTuple(args, "sOs:delegate_bind_ufunction", &delegate_name, &py_obj, &fname))
+		return nullptr;
+
+	UProperty *u_property = self->ue_object->GetClass()->FindPropertyByName(FName(delegate_name));
+	if (!u_property)
+		return PyErr_Format(PyExc_Exception, "unable to find property %s", delegate_name);
+
+	UDelegateProperty *Prop = Cast<UDelegateProperty>(u_property);
+	if (!Prop)
+		return PyErr_Format(PyExc_Exception, "property is not a UDelegateProperty");
+
+	UObject *Object = ue_py_check_type<UObject>(py_obj);
+	if (!Object)
+		return PyErr_Format(PyExc_Exception, "argument is not a UObject");
+
+	FScriptDelegate script_delegate;
+	script_delegate.BindUFunction(Object, FName(fname));
+
+	// re-assign multicast delegate
+	Prop->SetPropertyValue_InContainer(self->ue_object, script_delegate);
+
+	Py_RETURN_NONE;
 }
 
 #if PY_MAJOR_VERSION >= 3
@@ -1424,7 +1545,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 	{
 		UArrayProperty *u_array = (UArrayProperty *)scope;
 		u_array->AddCppProperty(u_property);
+#if ENGINE_MINOR_VERSION < 20
 		u_property->SetPropertyFlags(flags);
+#else
+		u_property->SetPropertyFlags((EPropertyFlags)flags);
+#endif
 		if (u_property->GetClass() == UObjectProperty::StaticClass())
 		{
 			UObjectProperty *obj_prop = (UObjectProperty *)u_property;
@@ -1453,12 +1578,16 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 			if (is_array || is_map)
 				scope->MarkPendingKill();
 			return PyErr_Format(PyExc_Exception, "unable to allocate new UProperty");
-		}
+	}
 		UMapProperty *u_map = (UMapProperty *)scope;
 
-
+#if ENGINE_MINOR_VERSION < 20
 		u_property->SetPropertyFlags(flags);
 		u_property2->SetPropertyFlags(flags);
+#else
+		u_property->SetPropertyFlags((EPropertyFlags)flags);
+		u_property2->SetPropertyFlags((EPropertyFlags)flags);
+#endif
 
 		if (u_property->GetClass() == UObjectProperty::StaticClass())
 		{
@@ -1498,7 +1627,7 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 		u_map->ValueProp = u_property2;
 
 		u_property = u_map;
-	}
+}
 #endif
 
 	if (u_class == UMulticastDelegateProperty::StaticClass())
@@ -1545,7 +1674,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 		}
 	}
 
+#if ENGINE_MINOR_VERSION < 20
 	u_property->SetPropertyFlags(flags);
+#else
+	u_property->SetPropertyFlags((EPropertyFlags)flags);
+#endif
 	u_property->ArrayDim = 1;
 
 	UStruct *u_struct = (UStruct *)self->ue_object;
@@ -1593,7 +1726,7 @@ PyObject *py_ue_as_dict(ue_PyUObject * self, PyObject * args)
 	TFieldIterator<UProperty> SArgs(u_struct);
 	for (; SArgs; ++SArgs)
 	{
-		PyObject *struct_value = ue_py_convert_property(*SArgs, (uint8 *)u_object);
+		PyObject *struct_value = ue_py_convert_property(*SArgs, (uint8 *)u_object, 0);
 		if (!struct_value)
 		{
 			Py_DECREF(py_struct_dict);
@@ -1741,7 +1874,10 @@ PyObject *py_ue_import_custom_properties(ue_PyUObject * self, PyObject * args)
 	}
 
 	FFeedbackContextAnsi context;
+
+	Py_BEGIN_ALLOW_THREADS;
 	self->ue_object->ImportCustomProperties(UTF8_TO_TCHAR(t3d), &context);
+	Py_END_ALLOW_THREADS;
 
 	TArray<FString> errors;
 	context.GetErrors(errors);
@@ -1794,12 +1930,10 @@ PyObject *py_ue_asset_reimport(ue_PyUObject * self, PyObject * args)
 
 	if (FReimportManager::Instance()->Reimport(self->ue_object, ask_for_new_file, show_notification, f_filename))
 	{
-		Py_INCREF(Py_True);
-		return Py_True;
+		Py_RETURN_TRUE;
 	}
 
-	Py_INCREF(Py_False);
-	return Py_False;
+	Py_RETURN_FALSE;
 }
 
 PyObject *py_ue_duplicate(ue_PyUObject * self, PyObject * args)
@@ -1821,11 +1955,15 @@ PyObject *py_ue_duplicate(ue_PyUObject * self, PyObject * args)
 
 	TSet<UPackage *> refused;
 
+	UObject *new_asset = nullptr;
+
+	Py_BEGIN_ALLOW_THREADS;
 #if ENGINE_MINOR_VERSION < 14
-	UObject *new_asset = ObjectTools::DuplicateSingleObject(self->ue_object, pgn, refused);
+	new_asset = ObjectTools::DuplicateSingleObject(self->ue_object, pgn, refused);
 #else
-	UObject *new_asset = ObjectTools::DuplicateSingleObject(self->ue_object, pgn, refused, (py_overwrite && PyObject_IsTrue(py_overwrite)));
+	new_asset = ObjectTools::DuplicateSingleObject(self->ue_object, pgn, refused, (py_overwrite && PyObject_IsTrue(py_overwrite)));
 #endif
+	Py_END_ALLOW_THREADS;
 
 	if (!new_asset)
 		return PyErr_Format(PyExc_Exception, "unable to duplicate object");

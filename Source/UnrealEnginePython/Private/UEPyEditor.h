@@ -2,7 +2,7 @@
 
 
 
-#include "UnrealEnginePython.h"
+#include "UEPyModule.h"
 
 #if WITH_EDITOR
 
@@ -13,6 +13,8 @@ PyObject *py_unreal_engine_editor_deselect_actors(PyObject *, PyObject *);
 PyObject *py_unreal_engine_editor_select_actor(PyObject *, PyObject *);
 PyObject *py_unreal_engine_import_asset(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_asset(PyObject *, PyObject *);
+PyObject *py_unreal_engine_is_loading_assets(PyObject *, PyObject *);
+PyObject *py_unreal_engine_wait_for_assets(PyObject *, PyObject *);
 PyObject *py_unreal_engine_find_asset(PyObject *, PyObject *);
 PyObject *py_unreal_engine_delete_object(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_assets(PyObject *, PyObject *);
@@ -54,6 +56,7 @@ PyObject *py_unreal_engine_get_blueprint_components(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_editor_play(PyObject *, PyObject *);
 PyObject *py_unreal_engine_editor_on_asset_post_import(PyObject *, PyObject *);
+PyObject *py_unreal_engine_on_main_frame_creation_finished(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_editor_command_build(PyObject *, PyObject *);
 PyObject *py_unreal_engine_editor_command_build_lighting(PyObject *, PyObject *);
@@ -91,6 +94,8 @@ PyObject *py_unreal_engine_get_asset_referencers(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_asset_dependencies(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_open_editor_for_asset(PyObject *, PyObject *);
+PyObject *py_unreal_engine_find_editor_for_asset(PyObject *, PyObject *);
+PyObject *py_unreal_engine_get_all_edited_assets(PyObject *, PyObject *);
 PyObject *py_unreal_engine_close_editor_for_asset(PyObject *, PyObject *);
 PyObject *py_unreal_engine_close_all_asset_editors(PyObject *, PyObject *);
 

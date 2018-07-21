@@ -1,9 +1,7 @@
 // Copyright 20Tab S.r.l.
 
-#include "UnrealEnginePythonPrivatePCH.h"
 #include "PyActor.h"
-
-#include "PythonDelegate.h"
+#include "UEPyModule.h"
 
 APyActor::APyActor()
 {
@@ -275,7 +273,7 @@ FString APyActor::CallPythonActorMethodString(FString method_name, FString args)
 		return FString();
 	}
 
-	char *str_ret = PyUnicode_AsUTF8(py_str);
+	const char *str_ret = UEPyUnicode_AsUTF8(py_str);
 
 	FString ret_fstring = FString(UTF8_TO_TCHAR(str_ret));
 

@@ -2,7 +2,7 @@
 
 
 
-#include "UnrealEnginePython.h"
+#include "UEPyModule.h"
 
 PyObject *py_ue_get_class(ue_PyUObject *, PyObject *);
 PyObject *py_ue_is_a(ue_PyUObject *, PyObject *);
@@ -23,6 +23,7 @@ PyObject *py_ue_get_property_struct(ue_PyUObject *, PyObject *);
 PyObject *py_ue_properties(ue_PyUObject *, PyObject *);
 PyObject *py_ue_call(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_property(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_property_array_dim(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_uproperty(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_property_class(ue_PyUObject *, PyObject *);
 PyObject *py_ue_has_property(ue_PyUObject *, PyObject *);
@@ -71,6 +72,9 @@ PyObject *py_ue_class_get_flags(ue_PyUObject *, PyObject *);
 PyObject *py_ue_class_set_flags(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_obj_flags(ue_PyUObject *, PyObject *);
 PyObject *py_ue_set_obj_flags(ue_PyUObject *, PyObject *);
+PyObject *py_ue_clear_obj_flags(ue_PyUObject *, PyObject *);
+PyObject *py_ue_reset_obj_flags(ue_PyUObject *, PyObject *);
+PyObject *py_ue_delegate_bind_ufunction(ue_PyUObject *, PyObject *);
 
 
 #if WITH_EDITOR

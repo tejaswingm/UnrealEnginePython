@@ -1,6 +1,6 @@
-#include "UnrealEnginePythonPrivatePCH.h"
-#include "PyHUD.h"
 
+#include "PyHUD.h"
+#include "UEPyModule.h"
 #include "PythonDelegate.h"
 
 APyHUD::APyHUD()
@@ -228,7 +228,7 @@ FString APyHUD::CallPythonHUDMethodString(FString method_name, FString args)
 		return FString();
 	}
 
-	char *str_ret = PyUnicode_AsUTF8(py_str);
+	const char *str_ret = UEPyUnicode_AsUTF8(py_str);
 
 	FString ret_fstring = FString(UTF8_TO_TCHAR(str_ret));
 

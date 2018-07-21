@@ -1,4 +1,4 @@
-#include "UnrealEnginePythonPrivatePCH.h"
+#include "UEPyAssetUserData.h"
 
 #if WITH_EDITOR
 
@@ -23,7 +23,11 @@ PyObject *py_ue_asset_import_data(ue_PyUObject * self, PyObject * args)
 		PyDict_SetItemString(py_source_file, "absolute_filepath", PyUnicode_FromString(TCHAR_TO_UTF8(*import_data->ResolveImportFilename(import_info->SourceFiles[i].RelativeFilename, NULL))));
 		PyDict_SetItemString(py_source_file, "relative_filepath", PyUnicode_FromString(TCHAR_TO_UTF8(*import_info->SourceFiles[i].RelativeFilename)));
 		PyDict_SetItemString(py_source_file, "timestamp", PyLong_FromLong(import_info->SourceFiles[i].Timestamp.ToUnixTimestamp()));
+#if ENGINE_MINOR_VERSION > 19
+		PyDict_SetItemString(py_source_file, "filehash", PyUnicode_FromString(TCHAR_TO_UTF8(*LexToString(import_info->SourceFiles[i].FileHash))));
+#else
 		PyDict_SetItemString(py_source_file, "filehash", PyUnicode_FromString(TCHAR_TO_UTF8(*LexicalConversion::ToString(import_info->SourceFiles[i].FileHash))));
+#endif
 		PyList_SetItem(ret, i, py_source_file);
 	}
 	return ret;
@@ -51,7 +55,7 @@ PyObject *py_ue_asset_import_data_set_sources(ue_PyUObject * self, PyObject * ar
 
 	if (PyUnicode_Check(py_files))
 	{
-		filenames.Add(FString(UTF8_TO_TCHAR(PyUnicode_AsUTF8(py_files))));
+		filenames.Add(FString(UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(py_files))));
 	}
 	else
 	{
@@ -68,7 +72,7 @@ PyObject *py_ue_asset_import_data_set_sources(ue_PyUObject * self, PyObject * ar
 				Py_DECREF(py_iter);
 				return PyErr_Format(PyExc_Exception, "argument is not a string or an interable of strings");
 			}
-			filenames.Add(FString(UTF8_TO_TCHAR(PyUnicode_AsUTF8(py_item))));
+			filenames.Add(FString(UTF8_TO_TCHAR(UEPyUnicode_AsUTF8(py_item))));
 		}
 
 		Py_DECREF(py_iter);

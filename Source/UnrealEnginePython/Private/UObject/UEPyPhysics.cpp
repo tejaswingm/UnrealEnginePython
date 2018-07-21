@@ -1,8 +1,12 @@
-#include "UnrealEnginePythonPrivatePCH.h"
+#include "UEPyPhysics.h"
 
 #if ENGINE_MINOR_VERSION >= 18
 #include "Runtime/Engine/Public/DestructibleInterface.h"
+#else
+#include "Components/DestructibleComponent.h"
 #endif
+
+#include "Components/PrimitiveComponent.h"
 
 
 PyObject *py_ue_set_simulate_physics(ue_PyUObject * self, PyObject * args)

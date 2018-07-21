@@ -1,4 +1,4 @@
-#include "UnrealEnginePythonPrivatePCH.h"
+
 #include "PyUserWidget.h"
 #include "PyNativeWidgetHost.h"
 
@@ -10,6 +10,8 @@
 #include "Widgets/Layout/SBox.h"
 #include "UMGStyle.h"
 #include "Runtime/UMG/Public/Blueprint/WidgetTree.h"
+#include "Slate/UEPyFKeyEvent.h"
+#include "Slate/UEPyFPointerEvent.h"
 
 void UPyUserWidget::NativeConstruct()
 {
@@ -70,10 +72,18 @@ void UPyUserWidget::NativeConstruct()
 	PyObject_SetAttrString(py_user_widget_instance, (char*)"uobject", (PyObject *)py_uobject);
 
 	if (PythonTickForceDisabled)
+#if ENGINE_MINOR_VERSION < 20
 		bCanEverTick = false;
+#else
+		bHasScriptImplementedTick = false;
+#endif
 
 	if (PythonPaintForceDisabled)
+#if ENGINE_MINOR_VERSION < 20
 		bCanEverPaint = false;
+#else
+		bHasScriptImplementedPaint = false;
+#endif
     
 	if (!PyObject_HasAttrString(py_user_widget_instance, (char *)"construct"))
 		return;

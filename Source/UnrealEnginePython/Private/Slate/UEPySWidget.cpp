@@ -1,22 +1,23 @@
 
-#include "UnrealEnginePythonPrivatePCH.h"
 
 #include "UEPySWidget.h"
+
+#include "Runtime/Slate/Public/Framework/Application/SlateApplication.h"
 
 static PyObject *ue_PySWidget_str(ue_PySWidget *self)
 {
 #if PY_MAJOR_VERSION >= 3
 	return PyUnicode_FromFormat("<unreal_engine.%s '%p' (slate ref count: %d, py ref count: %d)>",
-		TCHAR_TO_UTF8(*self->s_widget->GetTypeAsString()), &self->s_widget.Get(), self->s_widget.GetSharedReferenceCount(), self->ob_base.ob_refcnt);
+		TCHAR_TO_UTF8(*self->Widget->GetTypeAsString()), &self->Widget.Get(), self->Widget.GetSharedReferenceCount(), self->ob_base.ob_refcnt);
 #else
 	return PyUnicode_FromFormat("<unreal_engine.%s '%p' (slate ref count: %d)>",
-		TCHAR_TO_UTF8(*self->s_widget->GetTypeAsString()), &self->s_widget.Get(), self->s_widget.GetSharedReferenceCount());
+		TCHAR_TO_UTF8(*self->Widget->GetTypeAsString()), &self->Widget.Get(), self->Widget.GetSharedReferenceCount());
 #endif
 }
 
 static PyObject *py_ue_swidget_get_children(ue_PySWidget *self, PyObject * args)
 {
-	FChildren *children = self->s_widget->GetChildren();
+	FChildren *children = self->Widget->GetChildren();
 	PyObject *py_list = PyList_New(0);
 	for (int32 i = 0; i < children->Num(); i++)
 	{
@@ -65,10 +66,9 @@ static PyObject *py_ue_swidget_set_visibility(ue_PySWidget *self, PyObject * arg
 		break;
 	}
 
-	self->s_widget->SetVisibility(visibility);
+	self->Widget->SetVisibility(visibility);
 
-	Py_INCREF(self);
-	return (PyObject *)self;
+	Py_RETURN_SLATE_SELF;
 }
 
 static PyObject *py_ue_swidget_set_tooltip_text(ue_PySWidget *self, PyObject * args)
@@ -79,10 +79,9 @@ static PyObject *py_ue_swidget_set_tooltip_text(ue_PySWidget *self, PyObject * a
 		return NULL;
 	}
 
-	self->s_widget->SetToolTipText(FText::FromString(UTF8_TO_TCHAR(text)));
+	self->Widget->SetToolTipText(FText::FromString(UTF8_TO_TCHAR(text)));
 
-	Py_INCREF(self);
-	return (PyObject *)self;
+	Py_RETURN_SLATE_SELF;
 }
 
 static PyObject *py_ue_swidget_set_cursor(ue_PySWidget *self, PyObject * args)
@@ -93,7 +92,7 @@ static PyObject *py_ue_swidget_set_cursor(ue_PySWidget *self, PyObject * args)
 		return NULL;
 	}
 
-	self->s_widget->SetCursor((EMouseCursor::Type)cursor);
+	self->Widget->SetCursor((EMouseCursor::Type)cursor);
 
 	Py_INCREF(self);
 	return (PyObject *)self;
@@ -107,10 +106,9 @@ static PyObject *py_ue_swidget_set_enabled(ue_PySWidget *self, PyObject * args)
 		return NULL;
 	}
 
-	self->s_widget->SetEnabled(PyObject_IsTrue(py_bool) ? true : false);
+	self->Widget->SetEnabled(PyObject_IsTrue(py_bool) ? true : false);
 
-	Py_INCREF(self);
-	return (PyObject *)self;
+	Py_RETURN_SLATE_SELF;
 }
 
 #if ENGINE_MINOR_VERSION > 12
@@ -122,19 +120,18 @@ static PyObject *py_ue_swidget_bind_on_mouse_button_down(ue_PySWidget *self, PyO
 		return NULL;
 	}
 
-	if (!PyCalllable_Check_Extended(py_callable))
+	if (!PyCallable_Check(py_callable))
 	{
 		return PyErr_Format(PyExc_Exception, "argument is not callable");
 	}
 
 	FPointerEventHandler handler;
-	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewSlateDelegate(self->s_widget, py_callable);
+	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewSlateDelegate(self->Widget, py_callable);
 	handler.BindSP(py_delegate, &FPythonSlateDelegate::OnMouseEvent);
 
-	self->s_widget->SetOnMouseButtonDown(handler);
+	self->Widget->SetOnMouseButtonDown(handler);
 
-	Py_INCREF(self);
-	return (PyObject *)self;
+	Py_RETURN_SLATE_SELF;
 }
 
 static PyObject *py_ue_swidget_bind_on_mouse_button_up(ue_PySWidget *self, PyObject * args)
@@ -145,19 +142,18 @@ static PyObject *py_ue_swidget_bind_on_mouse_button_up(ue_PySWidget *self, PyObj
 		return nullptr;
 	}
 
-	if (!PyCalllable_Check_Extended(py_callable))
+	if (!PyCallable_Check(py_callable))
 	{
 		return PyErr_Format(PyExc_Exception, "argument is not callable");
 	}
 
 	FPointerEventHandler handler;
-	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewSlateDelegate(self->s_widget, py_callable);
+	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewSlateDelegate(self->Widget, py_callable);
 	handler.BindSP(py_delegate, &FPythonSlateDelegate::OnMouseEvent);
 
-	self->s_widget->SetOnMouseButtonUp(handler);
+	self->Widget->SetOnMouseButtonUp(handler);
 
-	Py_INCREF(self);
-	return (PyObject *)self;
+	Py_RETURN_SLATE_SELF;
 }
 
 static PyObject *py_ue_swidget_bind_on_mouse_double_click(ue_PySWidget *self, PyObject * args)
@@ -168,19 +164,18 @@ static PyObject *py_ue_swidget_bind_on_mouse_double_click(ue_PySWidget *self, Py
 		return NULL;
 	}
 
-	if (!PyCalllable_Check_Extended(py_callable))
+	if (!PyCallable_Check(py_callable))
 	{
 		return PyErr_Format(PyExc_Exception, "argument is not callable");
 	}
 
 	FPointerEventHandler handler;
-	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewSlateDelegate(self->s_widget, py_callable);
+	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewSlateDelegate(self->Widget, py_callable);
 	handler.BindSP(py_delegate, &FPythonSlateDelegate::OnMouseEvent);
 
-	self->s_widget->SetOnMouseDoubleClick(handler);
+	self->Widget->SetOnMouseDoubleClick(handler);
 
-	Py_INCREF(self);
-	return (PyObject *)self;
+	Py_RETURN_SLATE_SELF;
 }
 
 static PyObject *py_ue_swidget_bind_on_mouse_move(ue_PySWidget *self, PyObject * args)
@@ -191,19 +186,18 @@ static PyObject *py_ue_swidget_bind_on_mouse_move(ue_PySWidget *self, PyObject *
 		return NULL;
 	}
 
-	if (!PyCalllable_Check_Extended(py_callable))
+	if (!PyCallable_Check(py_callable))
 	{
 		return PyErr_Format(PyExc_Exception, "argument is not callable");
 	}
 
 	FPointerEventHandler handler;
-	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewSlateDelegate(self->s_widget, py_callable);
+	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewSlateDelegate(self->Widget, py_callable);
 	handler.BindSP(py_delegate, &FPythonSlateDelegate::OnMouseEvent);
 
-	self->s_widget->SetOnMouseMove(handler);
+	self->Widget->SetOnMouseMove(handler);
 
-	Py_INCREF(self);
-	return (PyObject *)self;
+	Py_RETURN_SLATE_SELF;
 }
 #endif
 
@@ -211,37 +205,33 @@ static PyObject *py_ue_swidget_bind_on_mouse_move(ue_PySWidget *self, PyObject *
 static PyObject *py_ue_swidget_has_keyboard_focus(ue_PySWidget *self, PyObject * args)
 {
 
-	if (self->s_widget->HasKeyboardFocus())
+	if (self->Widget->HasKeyboardFocus())
 	{
-		Py_INCREF(Py_True);
-		return Py_True;
+		Py_RETURN_TRUE;
 	}
 
-	Py_INCREF(Py_False);
-	return Py_False;
+	Py_RETURN_FALSE;
 }
 
 static PyObject *py_ue_swidget_set_keyboard_focus(ue_PySWidget *self, PyObject * args)
 {
-
-	FSlateApplication::Get().SetKeyboardFocus(self->s_widget, EFocusCause::SetDirectly);
-	Py_INCREF(self);
-	return (PyObject *)self;
+	FSlateApplication::Get().SetKeyboardFocus(self->Widget, EFocusCause::SetDirectly);
+	Py_RETURN_SLATE_SELF;
 }
 
 static PyObject *py_ue_swidget_get_type(ue_PySWidget *self, PyObject * args)
 {
-	return PyUnicode_FromString(TCHAR_TO_UTF8(*(self->s_widget->GetTypeAsString())));
+	return PyUnicode_FromString(TCHAR_TO_UTF8(*(self->Widget->GetTypeAsString())));
 }
 
 static PyObject *py_ue_swidget_get_cached_geometry(ue_PySWidget *self, PyObject * args)
 {
-	return py_ue_new_fgeometry(self->s_widget->GetCachedGeometry());
+	return py_ue_new_fgeometry(self->Widget->GetCachedGeometry());
 }
 
 static PyObject *py_ue_swidget_get_shared_reference_count(ue_PySWidget *self, PyObject * args)
 {
-	return PyLong_FromLong(self->s_widget.GetSharedReferenceCount());
+	return PyLong_FromLong(self->Widget.GetSharedReferenceCount());
 }
 
 static PyObject *py_ue_swidget_invalidate(ue_PySWidget *self, PyObject * args)
@@ -251,7 +241,7 @@ static PyObject *py_ue_swidget_invalidate(ue_PySWidget *self, PyObject * args)
 	{
 		return nullptr;
 	}
-	self->s_widget->Invalidate((EInvalidateWidget)invalidate_mode);
+	self->Widget->Invalidate((EInvalidateWidget)invalidate_mode);
 	Py_RETURN_NONE;
 }
 
@@ -276,7 +266,7 @@ static PyObject *py_ue_swidget_on_mouse_button_down(ue_PySWidget *self, PyObject
 		return PyErr_Format(PyExc_Exception, "argument is not a FPointerEvent");
 	}
 
-	FReply reply = self->s_widget->OnMouseButtonDown(geometry->geometry, pointer->pointer);
+	FReply reply = self->Widget->OnMouseButtonDown(geometry->geometry, pointer->pointer);
 
 	if (reply.IsEventHandled())
 	{
@@ -307,7 +297,7 @@ static PyObject *py_ue_swidget_on_mouse_button_up(ue_PySWidget *self, PyObject *
 		return PyErr_Format(PyExc_Exception, "argument is not a FPointerEvent");
 	}
 
-	FReply reply = self->s_widget->OnMouseButtonUp(geometry->geometry, pointer->pointer);
+	FReply reply = self->Widget->OnMouseButtonUp(geometry->geometry, pointer->pointer);
 
 	if (reply.IsEventHandled())
 	{
@@ -317,7 +307,24 @@ static PyObject *py_ue_swidget_on_mouse_button_up(ue_PySWidget *self, PyObject *
 	Py_RETURN_FALSE;
 }
 
+
+static PyObject *py_ue_swidget_new_ref(ue_PySWidget *self, PyObject * args)
+{
+	PyObject *py_widget;
+	if (!PyArg_ParseTuple(args, "O:new_ref", &py_widget))
+	{
+		return nullptr;
+	}
+
+	TSharedPtr<SWidget> Widget = py_ue_is_swidget<SWidget>(py_widget);
+	if (!Widget.IsValid())
+		return nullptr;
+
+	return (PyObject *)py_ue_new_swidget<ue_PySWidget>(Widget.ToSharedRef(), &ue_PySWidgetType);
+}
+
 static PyMethodDef ue_PySWidget_methods[] = {
+	{ "new_ref", (PyCFunction)py_ue_swidget_new_ref, METH_VARARGS, "" },
 	{ "get_shared_reference_count", (PyCFunction)py_ue_swidget_get_shared_reference_count, METH_VARARGS, "" },
 	{ "get_cached_geometry", (PyCFunction)py_ue_swidget_get_cached_geometry, METH_VARARGS, "" },
 	{ "get_children", (PyCFunction)py_ue_swidget_get_children, METH_VARARGS, "" },
@@ -340,18 +347,20 @@ static PyMethodDef ue_PySWidget_methods[] = {
 	{ NULL }  /* Sentinel */
 };
 
-static void ue_PySWidgett_dealloc(ue_PySWidget *self)
+static void ue_PySWidget_dealloc(ue_PySWidget *self)
 {
 #if defined(UEPY_MEMORY_DEBUG)
 	UE_LOG(LogPython, Warning, TEXT("Destroying ue_PySWidget %p mapped to %s %p (slate refcount: %d)"), self, *self->s_widget->GetTypeAsString(), &self->s_widget.Get(), self->s_widget.GetSharedReferenceCount());
 #endif
-	Py_DECREF(self->py_dict);
-	ue_py_unregister_swidget(&self->s_widget.Get());
+
+	if (self->weakreflist != nullptr)
+		PyObject_ClearWeakRefs((PyObject *)self);
+
 	// decrement widget reference count
 	// but only if python vm is still fully active (hack to avoid crashes on editor shutdown)
 	if (Py_IsInitialized())
 	{
-		self->s_widget = SNullWidget::NullWidget;
+		self->Widget = SNullWidget::NullWidget;
 	}
 	else
 	{
@@ -366,7 +375,7 @@ PyTypeObject ue_PySWidgetType = {
 	"unreal_engine.SWidget", /* tp_name */
 	sizeof(ue_PySWidget), /* tp_basicsize */
 	0,                         /* tp_itemsize */
-	(destructor)ue_PySWidgett_dealloc,       /* tp_dealloc */
+	(destructor)ue_PySWidget_dealloc,       /* tp_dealloc */
 	0,                         /* tp_print */
 	0,                         /* tp_getattr */
 	0,                         /* tp_setattr */
@@ -400,7 +409,8 @@ ue_PySWidget_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 	self = (ue_PySWidget *)type->tp_alloc(type, 0);
 	if (self != NULL)
 	{
-		ue_py_setup_swidget(self);
+		new(&self->Widget) TSharedRef<SWidget>(SNullWidget::NullWidget);
+		self->weakreflist = nullptr;
 	}
 
 	return (PyObject *)self;
@@ -409,10 +419,8 @@ ue_PySWidget_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 void ue_python_init_swidget(PyObject *ue_module)
 {
 	ue_PySWidgetType.tp_new = ue_PySWidget_new;
-
-	ue_PySWidgetType.tp_getattro = PyObject_GenericGetAttr;
-	ue_PySWidgetType.tp_setattro = PyObject_GenericSetAttr;
-	ue_PySWidgetType.tp_dictoffset = offsetof(ue_PySWidget, py_dict);
+	// support for weak references, useful for tests
+	ue_PySWidgetType.tp_weaklistoffset = offsetof(ue_PySWidget, weakreflist);
 
 	if (PyType_Ready(&ue_PySWidgetType) < 0)
 		return;
@@ -421,10 +429,5 @@ void ue_python_init_swidget(PyObject *ue_module)
 	PyModule_AddObject(ue_module, "SWidget", (PyObject *)&ue_PySWidgetType);
 }
 
-ue_PySWidget *py_ue_is_swidget(PyObject *obj)
-{
-	if (!PyObject_IsInstance(obj, (PyObject *)&ue_PySWidgetType))
-		return nullptr;
-	return (ue_PySWidget *)obj;
-}
+
 

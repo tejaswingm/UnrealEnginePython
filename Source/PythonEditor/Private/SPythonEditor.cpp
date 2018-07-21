@@ -1,10 +1,16 @@
 // Copyright 1998-2016 Epic Games, Inc. All Rights Reserved.
 
-#include "PythonEditorPrivatePCH.h"
 #include "SPythonEditor.h"
 #include "SMultiLineEditableText.h"
 #include "PYRichTextSyntaxHighlighterTextLayoutMarshaller.h"
 #include "SPythonEditableText.h"
+#include "Runtime/Core/Public/Misc/FileHelper.h"
+#include "PythonProjectItem.h"
+#include "Runtime/Slate/Public/Widgets/Layout/SGridPanel.h"
+#include "PythonEditorStyle.h"
+#include "Runtime/Slate/Public/Widgets/Text/STextBlock.h"
+#include "Runtime/Slate/Public/Widgets/Layout/SScrollBar.h"
+#include "UnrealEnginePython.h"
 
 
 #define LOCTEXT_NAMESPACE "PythonEditor"
@@ -108,17 +114,20 @@ void SPythonEditor::Execute() const
 	PythonModule.RunString(TCHAR_TO_UTF8(*SelectionString));
 }
 
-void SPythonEditor::ExecuteInSandbox() const
+#if PLATFORM_MAC
+void SPythonEditor::ExecuteInMainThread() const
 {
 	Save();
 	FUnrealEnginePythonModule &PythonModule = FModuleManager::GetModuleChecked<FUnrealEnginePythonModule>("UnrealEnginePython");
-
+	
 	FString SelectionString = PythonEditableText->GetSelectedText().ToString();
 	if (SelectionString.Len() == 0) {
 		SelectionString = PythonEditableText->GetText().ToString();
 	}
-	PythonModule.RunStringSandboxed(TCHAR_TO_UTF8(*SelectionString));
+	PythonModule.RunStringInMainThread(TCHAR_TO_UTF8(*SelectionString));
 }
+#endif
+
 
 void SPythonEditor::PEP8ize() const
 {
@@ -144,7 +153,7 @@ FText SPythonEditor::GetLineAndColumn() const
 	int32 Column;
 	PythonEditableText->GetLineAndColumn(Line, Column);
 	
-	FString LineAndColumn = FString::Printf(TEXT("Line: %d Column: %d"), Line, Column);
+	FString LineAndColumn = FString::Printf(TEXT("Line: %d Column: %d"), Line + 1, Column);
 	
 	return FText::FromString(LineAndColumn);
 }

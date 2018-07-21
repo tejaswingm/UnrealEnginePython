@@ -1,4 +1,4 @@
-#include "UnrealEnginePythonPrivatePCH.h"
+#include "UEPyFTransform.h"
 
 static PyObject *py_ue_ftransform_inverse(ue_PyFTransform *self, PyObject * args)
 {
@@ -28,13 +28,15 @@ static PyObject *py_ue_ftransform_get_relative_transform(ue_PyFTransform *self, 
 
 static PyObject *py_ue_ftransform_get_matrix(ue_PyFTransform *self, PyObject * args)
 {
-	FMatrix matrix = self->transform.ToMatrixWithScale();
+	FTransform transform = self->transform;
+	transform.NormalizeRotation();
+	FMatrix matrix = transform.ToMatrixWithScale();
 	UScriptStruct *u_struct = FindObject<UScriptStruct>(ANY_PACKAGE, UTF8_TO_TCHAR("Matrix"));
 	if (!u_struct)
 	{
 		return PyErr_Format(PyExc_Exception, "unable to get Matrix struct");
 	}
-	return py_ue_new_uscriptstruct(u_struct, (uint8 *)&matrix);
+	return py_ue_new_owned_uscriptstruct(u_struct, (uint8 *)&matrix);
 }
 
 static PyMethodDef ue_PyFTransform_methods[] = {

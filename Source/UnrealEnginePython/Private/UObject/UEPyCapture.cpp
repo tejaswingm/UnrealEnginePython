@@ -1,4 +1,4 @@
-#include "UnrealEnginePythonPrivatePCH.h"
+#include "UEPyCapture.h"
 
 #include "Runtime/MovieSceneCapture/Public/MovieSceneCapture.h"
 
@@ -16,6 +16,15 @@ for a queue of UMovieSceneCapture objects
 #include "Editor/EditorEngine.h"
 #include "Slate/SceneViewport.h"
 #include "AutomatedLevelSequenceCapture.h"
+
+#include "Slate/UEPySPythonEditorViewport.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameMode.h"
+#include "Runtime/CoreUObject/Public/Serialization/ObjectReader.h"
+#include "Runtime/CoreUObject/Public/Serialization/ObjectWriter.h"
+#include "Runtime/Slate/Public/Framework/Application/SlateApplication.h"
+#include "Runtime/Core/Public/Containers/Ticker.h"
+
 
 struct FInEditorMultiCapture : TSharedFromThis<FInEditorMultiCapture>
 {
@@ -265,7 +274,7 @@ private:
 
 	void NextCapture(bool bIsSimulating)
 	{
-		
+
 		FEditorDelegates::EndPIE.RemoveAll(this);
 		// remove item from the TArray;
 		CaptureObjects.RemoveAt(0);
@@ -338,9 +347,11 @@ PyObject *py_unreal_engine_in_editor_capture(PyObject * self, PyObject * args)
 		Captures.Add(capture);
 	}
 
-	FInEditorMultiCapture::CreateInEditorMultiCapture(Captures);
+	Py_BEGIN_ALLOW_THREADS
+		FInEditorMultiCapture::CreateInEditorMultiCapture(Captures);
+	Py_END_ALLOW_THREADS
 
-	Py_RETURN_NONE;
+		Py_RETURN_NONE;
 }
 
 PyObject *py_ue_set_level_sequence_asset(ue_PyUObject *self, PyObject *args)
@@ -364,8 +375,11 @@ PyObject *py_ue_set_level_sequence_asset(ue_PyUObject *self, PyObject *args)
 	if (!capture)
 		return PyErr_Format(PyExc_Exception, "uobject is not a UAutomatedLevelSequenceCapture");
 
+#if ENGINE_MINOR_VERSION < 20
 	capture->SetLevelSequenceAsset(sequence->GetPathName());
-
+#else
+	capture->LevelSequenceAsset = FSoftObjectPath(sequence->GetPathName());
+#endif
 	Py_RETURN_NONE;
 }
 #endif
@@ -389,15 +403,11 @@ PyObject *py_ue_capture_initialize(ue_PyUObject * self, PyObject * args)
 #if WITH_EDITOR
 	if (py_widget)
 	{
-		ue_PySWidget *s_widget = py_ue_is_swidget(py_widget);
-		if (!s_widget)
-			return PyErr_Format(PyExc_Exception, "argument is not a SWidget");
 
-
-		if (s_widget->s_widget->GetType().Compare(FName("SPythonEditorViewport")) == 0)
+		TSharedPtr<SPythonEditorViewport> Viewport = py_ue_is_swidget<SPythonEditorViewport>(py_widget);
+		if (Viewport.IsValid())
 		{
-			TSharedRef<SPythonEditorViewport> s_viewport = StaticCastSharedRef<SPythonEditorViewport>(s_widget->s_widget);
-			capture->Initialize(s_viewport->GetSceneViewport());
+			capture->Initialize(Viewport->GetSceneViewport());
 			capture->StartWarmup();
 		}
 		else
