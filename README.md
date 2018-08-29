@@ -6,7 +6,7 @@ Embed Python in Unreal Engine 4
 
 This fork is meant to encapsulate python + pip + scripts fully in the plugin and to allow dependency plugins to be built on top of the python plugin. Specifically it means adding automatic pip dependency resolution and automatic sys.path additions such that the resulting two plugins can be fully drag and dropped into a new project.
 
-## End Fork Notes
+## Resources and Examples
 
 Teaser (by Kite & Lightning): https://twitter.com/KNLstudio/status/932657812466843648
 
