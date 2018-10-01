@@ -109,12 +109,13 @@
 #include "Runtime/Core/Public/Misc/Attribute.h"
 #include "Runtime/Slate/Public/Framework/Application/SlateApplication.h"
 #include "Runtime/SlateCore/Public/Styling/SlateStyleRegistry.h"
+#include "Runtime/Slate/Public/Framework/Commands/Commands.h"
 
 FReply FPythonSlateDelegate::OnMouseEvent(const FGeometry &geometry, const FPointerEvent &pointer_event)
 {
 	FScopePythonGIL gil;
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"OO", py_ue_new_fgeometry(geometry), py_ue_new_fpointer_event(pointer_event));
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"NN", py_ue_new_fgeometry(geometry), py_ue_new_fpointer_event(pointer_event));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -134,7 +135,7 @@ FReply FPythonSlateDelegate::OnKeyDown(const FGeometry &geometry, const FKeyEven
 {
 	FScopePythonGIL gil;
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"OO", py_ue_new_fgeometry(geometry), py_ue_new_fkey_event(key_event));
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"NN", py_ue_new_fgeometry(geometry), py_ue_new_fkey_event(key_event));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -252,7 +253,7 @@ void FPythonSlateDelegate::OnLinearColorChanged(FLinearColor color)
 {
 	FScopePythonGIL gil;
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_ue_new_flinearcolor(color));
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_flinearcolor(color));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -265,7 +266,7 @@ void FPythonSlateDelegate::OnWindowClosed(const TSharedRef<SWindow> &Window)
 {
 	FScopePythonGIL gil;
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_ue_new_swidget<ue_PySWindow>(StaticCastSharedRef<SWidget>(Window), &ue_PySWindowType));
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_swidget<ue_PySWindow>(StaticCastSharedRef<SWidget>(Window), &ue_PySWindowType));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -318,7 +319,7 @@ void FPythonSlateDelegate::OnAssetDoubleClicked(const FAssetData& AssetData)
 {
 	FScopePythonGIL gil;
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_ue_new_fassetdata(AssetData));
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_fassetdata(AssetData));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -330,7 +331,7 @@ void FPythonSlateDelegate::OnAssetSelected(const FAssetData& AssetData)
 {
 	FScopePythonGIL gil;
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_ue_new_fassetdata(AssetData));
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_fassetdata(AssetData));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -342,7 +343,7 @@ void FPythonSlateDelegate::OnAssetChanged(const FAssetData& AssetData)
 {
 	FScopePythonGIL gil;
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_ue_new_fassetdata(AssetData));
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_fassetdata(AssetData));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -354,7 +355,7 @@ bool FPythonSlateDelegate::OnShouldFilterAsset(const FAssetData& AssetData)
 {
 	FScopePythonGIL gil;
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_ue_new_fassetdata(AssetData));
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_fassetdata(AssetData));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -406,7 +407,7 @@ void FPythonSlateDelegate::MenuPyAssetBuilder(FMenuBuilder &Builder, TArray<FAss
 		PyList_Append(py_list, py_ue_new_fassetdata(asset));
 	}
 
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"OO", py_ue_new_fmenu_builder(Builder), py_list);
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"NO", py_ue_new_fmenu_builder(Builder), py_list);
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -755,9 +756,9 @@ FLinearColor FPythonSlateDelegate::GetterFLinearColor() const
 
 TSharedRef<SDockTab> FPythonSlateDelegate::SpawnPythonTab(const FSpawnTabArgs &args)
 {
+	FScopePythonGIL gil;
 	TSharedRef<SDockTab> dock_tab = SNew(SDockTab).TabRole(ETabRole::NomadTab);
-	PyObject *py_dock = (PyObject *)ue_py_get_swidget(dock_tab);
-	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_dock);
+	PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", ue_py_get_swidget(dock_tab));
 	if (!ret)
 	{
 		unreal_engine_py_log_error();
@@ -1028,7 +1029,7 @@ public:
 	void MenuPyBuilder(FMenuBuilder &Builder)
 	{
 		FScopePythonGIL gil;
-		PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_ue_new_fmenu_builder(Builder));
+		PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_fmenu_builder(Builder));
 		if (!ret)
 		{
 			unreal_engine_py_log_error();
@@ -1046,7 +1047,7 @@ public:
 	void ToolBarBuilder(FToolBarBuilder &Builder)
 	{
 		FScopePythonGIL gil;
-		PyObject *ret = PyObject_CallFunction(py_callable, (char *)"O", py_ue_new_ftool_bar_builder(Builder));
+		PyObject *ret = PyObject_CallFunction(py_callable, (char *)"N", py_ue_new_ftool_bar_builder(Builder));
 		if (!ret)
 		{
 			unreal_engine_py_log_error();
@@ -1399,7 +1400,8 @@ PyObject *py_unreal_engine_register_nomad_tab_spawner(PyObject * self, PyObject 
 
 	char *name;
 	PyObject *py_callable;
-	if (!PyArg_ParseTuple(args, "sO:register_nomad_tab_spawner", &name, &py_callable))
+	PyObject *py_icon = nullptr;
+	if (!PyArg_ParseTuple(args, "sO|O:register_nomad_tab_spawner", &name, &py_callable, &py_icon))
 	{
 		return NULL;
 	}
@@ -1411,14 +1413,33 @@ PyObject *py_unreal_engine_register_nomad_tab_spawner(PyObject * self, PyObject 
 	TSharedRef<FPythonSlateDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewStaticSlateDelegate(py_callable);
 	spawn_tab.BindSP(py_delegate, &FPythonSlateDelegate::SpawnPythonTab);
 
-	FTabSpawnerEntry *spawner_entry = &FGlobalTabmanager::Get()->RegisterNomadTabSpawner(UTF8_TO_TCHAR(name), spawn_tab)
+	FName TabName = FName(UTF8_TO_TCHAR(name));
+
+	// avoid crash if re-registering the same tab
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(TabName);
+
+	FSlateIcon Icon = FSlateIcon();
+	if (py_icon)
+	{
+		ue_PyFSlateIcon *slate_icon = py_ue_is_fslate_icon(py_icon);
+		if (!slate_icon)
+		{
+			return PyErr_Format(PyExc_Exception, "argument is not a FSlateIcon");
+		}
+		Icon = slate_icon->icon;
+	}
+
+	FTabSpawnerEntry *SpawnerEntry = &FGlobalTabmanager::Get()->RegisterNomadTabSpawner(TabName, spawn_tab)
+		.SetDisplayName(FText::FromString((TabName).ToString()))
+		.SetTooltipText(FText::FromString((TabName).ToString()))
+		.SetIcon(Icon)
 		// TODO: more generic way to set the group
 #if WITH_EDITOR
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetDeveloperToolsMiscCategory())
 #endif
 		;
 
-	PyObject *ret = py_ue_new_ftab_spawner_entry(spawner_entry);
+	PyObject *ret = py_ue_new_ftab_spawner_entry(SpawnerEntry);
 	Py_INCREF(ret);
 	return ret;
 }

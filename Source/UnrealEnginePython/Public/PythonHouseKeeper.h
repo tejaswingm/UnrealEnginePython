@@ -5,20 +5,24 @@
 #include "UObject/WeakObjectPtr.h"
 #include "Widgets/SWidget.h"
 #include "Slate/UEPySlateDelegate.h"
+#include "Runtime/CoreUObject/Public/UObject/GCObject.h"
 #include "PythonDelegate.h"
+#include "PythonSmartDelegate.h"
 
-class FUnrealEnginePythonHouseKeeper
+class FUnrealEnginePythonHouseKeeper : public FGCObject
 {
 
 	struct FPythonUOjectTracker
 	{
 		FWeakObjectPtr Owner;
 		ue_PyUObject *PyUObject;
+		bool bPythonOwned;
 
 		FPythonUOjectTracker(UObject *Object, ue_PyUObject *InPyUObject)
 		{
 			Owner = FWeakObjectPtr(Object);
 			PyUObject = InPyUObject;
+			bPythonOwned = false;
 		}
 	};
 
@@ -52,6 +56,11 @@ class FUnrealEnginePythonHouseKeeper
 	};
 
 public:
+
+	virtual void AddReferencedObjects(FReferenceCollector& InCollector) override
+	{
+		InCollector.AddReferencedObjects(PythonTrackedObjects);
+	}
 
 	static FUnrealEnginePythonHouseKeeper *Get()
 	{
@@ -101,6 +110,27 @@ public:
 
 	}
 
+	void TrackUObject(UObject *Object)
+	{
+		FPythonUOjectTracker *Tracker = UObjectPyMapping.Find(Object);
+		if (!Tracker)
+		{
+			return;
+		}
+		if (Tracker->bPythonOwned)
+			return;
+		Tracker->bPythonOwned = true;
+		// when a new ue_PyUObject spawns, it has a reference counting of two
+		Py_DECREF(Tracker->PyUObject);
+		Tracker->PyUObject->owned = 1;
+		PythonTrackedObjects.Add(Object);
+	}
+
+	void UntrackUObject(UObject *Object)
+	{
+		PythonTrackedObjects.Remove(Object);
+	}
+
 	void RegisterPyUObject(UObject *Object, ue_PyUObject *InPyUObject)
 	{
 		UObjectPyMapping.Add(Object, FPythonUOjectTracker(Object, InPyUObject));
@@ -124,7 +154,8 @@ public:
 #if defined(UEPY_MEMORY_DEBUG)
 			UE_LOG(LogPython, Warning, TEXT("DEFREF'ing UObject at %p (refcnt: %d)"), Object, Tracker->PyUObject->ob_base.ob_refcnt);
 #endif
-			Py_DECREF((PyObject *)Tracker->PyUObject);
+			if (!Tracker->bPythonOwned)
+				Py_DECREF((PyObject *)Tracker->PyUObject);
 			UnregisterPyUObject(Object);
 			return nullptr;
 		}
@@ -157,18 +188,19 @@ public:
 				UE_LOG(LogPython, Error, TEXT("UObject at %p %s is in use"), Object, *Object->GetName());
 #endif
 			}
-			}
+		}
 
 		for (UObject *Object : BrokenList)
 		{
 			FPythonUOjectTracker &Tracker = UObjectPyMapping[Object];
-			Py_DECREF((PyObject *)Tracker.PyUObject);
+			if (!Tracker.bPythonOwned)
+				Py_DECREF((PyObject *)Tracker.PyUObject);
 			UnregisterPyUObject(Object);
 		}
 
 		return Garbaged;
 
-		}
+	}
 
 
 	int32 DelegatesGC()
@@ -239,6 +271,16 @@ public:
 		return Delegate;
 	}
 
+	TSharedRef<FPythonSmartDelegate> NewPythonSmartDelegate(PyObject *PyCallable)
+	{
+		TSharedRef<FPythonSmartDelegate> Delegate = MakeShareable(new FPythonSmartDelegate());
+		Delegate->SetPyCallable(PyCallable);
+
+		PyStaticSmartDelegatesTracker.Add(Delegate);
+
+		return Delegate;
+	}
+
 	void TrackDeferredSlateDelegate(TSharedRef<FPythonSlateDelegate> Delegate, TSharedRef<SWidget> Owner)
 	{
 		FPythonSWidgetDelegateTracker Tracker(Delegate, Owner);
@@ -261,4 +303,8 @@ private:
 
 	TArray<FPythonSWidgetDelegateTracker> PySlateDelegatesTracker;
 	TArray<TSharedRef<FPythonSlateDelegate>> PyStaticSlateDelegatesTracker;
-	};
+
+	TArray<TSharedRef<FPythonSmartDelegate>> PyStaticSmartDelegatesTracker;
+
+	TArray<UObject *> PythonTrackedObjects;
+};

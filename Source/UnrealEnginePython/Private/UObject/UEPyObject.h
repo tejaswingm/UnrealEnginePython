@@ -25,16 +25,24 @@ PyObject *py_ue_call(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_property(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_property_array_dim(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_uproperty(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_inner(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_key_prop(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_value_prop(ue_PyUObject *, PyObject *);
 PyObject *py_ue_get_property_class(ue_PyUObject *, PyObject *);
 PyObject *py_ue_has_property(ue_PyUObject *, PyObject *);
 PyObject *py_ue_is_rooted(ue_PyUObject *, PyObject *);
 PyObject *py_ue_add_to_root(ue_PyUObject *, PyObject *);
 PyObject *py_ue_remove_from_root(ue_PyUObject *, PyObject *);
 PyObject *py_ue_auto_root(ue_PyUObject *, PyObject *);
+PyObject *py_ue_own(ue_PyUObject *, PyObject *);
+PyObject *py_ue_disown(ue_PyUObject *, PyObject *);
+PyObject *py_ue_is_owned(ue_PyUObject *, PyObject *);
 
 PyObject *py_ue_save_config(ue_PyUObject *, PyObject *);
 
 PyObject *py_ue_get_cdo(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_archetype(ue_PyUObject *, PyObject *);
+PyObject *py_ue_get_archetype_instances(ue_PyUObject *, PyObject *);
 PyObject *py_ue_enum_values(ue_PyUObject *, PyObject *);
 PyObject *py_ue_enum_names(ue_PyUObject *, PyObject *);
 #if ENGINE_MINOR_VERSION >= 15
