@@ -16,12 +16,16 @@ PyObject *py_unreal_engine_get_asset(PyObject *, PyObject *);
 PyObject *py_unreal_engine_is_loading_assets(PyObject *, PyObject *);
 PyObject *py_unreal_engine_wait_for_assets(PyObject *, PyObject *);
 PyObject *py_unreal_engine_find_asset(PyObject *, PyObject *);
+PyObject *py_unreal_engine_create_asset(PyObject *, PyObject *);
 PyObject *py_unreal_engine_delete_object(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_assets(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_selected_assets(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_assets_by_class(PyObject *, PyObject *);
 PyObject *py_unreal_engine_get_assets_by_filter(PyObject *, PyObject *, PyObject *);
 PyObject *py_unreal_engine_set_fbx_import_option(PyObject *, PyObject *);
+
+PyObject *py_unreal_engine_redraw_all_viewports(PyObject *, PyObject *);
+PyObject *py_unreal_engine_update_ui(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_create_modal_save_asset_dialog(PyObject *, PyObject *);
 

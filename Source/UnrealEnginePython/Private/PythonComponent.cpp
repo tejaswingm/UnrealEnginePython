@@ -138,9 +138,6 @@ void UPythonComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		return;
 
 	FScopePythonGIL gil;
-	if (!PyObject_HasAttrString(py_component_instance, (char *)"end_play")) {
-		return;
-	}
 
 	if (PyObject_HasAttrString(py_component_instance, (char *)"end_play"))
 	{
@@ -155,6 +152,8 @@ void UPythonComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 
 	Super::EndPlay(EndPlayReason);
+
+	// ...
 }
 
 // Called every frame

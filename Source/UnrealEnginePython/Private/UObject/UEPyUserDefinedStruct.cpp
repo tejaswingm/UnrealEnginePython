@@ -2,6 +2,7 @@
 
 
 #if WITH_EDITOR
+#include "Runtime/Engine/Classes/Engine/UserDefinedStruct.h"
 #include "Classes/UserDefinedStructure/UserDefinedStructEditorData.h"
 #include "Public/Kismet2/StructureEditorUtils.h"
 
