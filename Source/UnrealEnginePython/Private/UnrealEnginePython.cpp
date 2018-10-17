@@ -34,7 +34,7 @@ const char *ue4_module_options = "linux_global_symbols";
 #include "Runtime/Core/Public/Misc/CommandLine.h"
 #include "Runtime/Core/Public/Misc/ConfigCacheIni.h"
 #include "Runtime/Core/Public/GenericPlatform/GenericPlatformFile.h"
-
+#include "Runtime/Projects/Public/Interfaces/IPluginManager.h"
 
 const char *UEPyUnicode_AsUTF8(PyObject *py_str)
 {
