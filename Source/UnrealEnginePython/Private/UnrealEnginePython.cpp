@@ -35,6 +35,7 @@ const char *ue4_module_options = "linux_global_symbols";
 #include "Runtime/Core/Public/Misc/ConfigCacheIni.h"
 #include "Runtime/Core/Public/GenericPlatform/GenericPlatformFile.h"
 #include "Runtime/Projects/Public/Interfaces/IPluginManager.h"
+#include "Runtime/Core/Public/HAL/FileManagerGeneric.h"
 
 const char *UEPyUnicode_AsUTF8(PyObject *py_str)
 {
@@ -240,9 +241,9 @@ FAutoConsoleCommand ExecPythonStringCommand(
 	*NSLOCTEXT("UnrealEnginePython", "CommandText_Cmd", "Execute python string").ToString(),
 	FConsoleCommandWithArgsDelegate::CreateStatic(consoleExecString));
 
+
 void FUnrealEnginePythonModule::StartupModule()
 {
-
 	BrutalFinalize = false;
 
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
@@ -271,6 +272,8 @@ void FUnrealEnginePythonModule::StartupModule()
 
 		Py_SetPythonHome(home);
 	}
+
+	TArray<FString> ImportModules;
 
 	FString IniValue;
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("ProgramName"), IniValue, GEngineIni))
@@ -324,6 +327,12 @@ void FUnrealEnginePythonModule::StartupModule()
 	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("RelativeZipPath"), IniValue, GEngineIni))
 	{
 		ZipPath = FPaths::Combine(*PROJECT_CONTENT_DIR, *IniValue);
+	}
+
+	if (GConfig->GetString(UTF8_TO_TCHAR("Python"), UTF8_TO_TCHAR("ImportModules"), IniValue, GEngineIni))
+	{
+		const TCHAR* separators[] = { TEXT(" "), TEXT(";"), TEXT(",") };
+		IniValue.ParseIntoArray(ImportModules, separators, 3);
 	}
 
 	FString ProjectScriptsPath = FPaths::Combine(*PROJECT_CONTENT_DIR, UTF8_TO_TCHAR("Scripts"));
@@ -448,11 +457,24 @@ void FUnrealEnginePythonModule::StartupModule()
 #else
 		unreal_engine_py_log_error();
 #endif
+	}
+
+
+	for (FString ImportModule : ImportModules)
+	{
+		if (PyImport_ImportModule(TCHAR_TO_UTF8(*ImportModule)))
+		{
+			UE_LOG(LogPython, Log, TEXT("%s Python module successfully imported"), *ImportModule);
 		}
+		else
+		{
+			unreal_engine_py_log_error();
+		}
+	}
 
 	// release the GIL
 	PyThreadState *UEPyGlobalState = PyEval_SaveThread();
-	}
+}
 
 void FUnrealEnginePythonModule::ShutdownModule()
 {
@@ -474,6 +496,11 @@ void FUnrealEnginePythonModule::RunString(char *str)
 	PyObject *eval_ret = PyRun_String(str, Py_file_input, (PyObject *)main_dict, (PyObject *)local_dict);
 	if (!eval_ret)
 	{
+		if (PyErr_ExceptionMatches(PyExc_SystemExit))
+		{
+			PyErr_Clear();
+			return;
+		}
 		unreal_engine_py_log_error();
 		return;
 	}
@@ -526,7 +553,7 @@ FString FUnrealEnginePythonModule::Pep8ize(FString Code)
 		return Code;
 	}
 
-	if (!PyUnicode_Check(ret))
+	if (!PyUnicodeOrString_Check(ret))
 	{
 		UE_LOG(LogPython, Error, TEXT("returned value is not a string"));
 		// return the original string to avoid losing data
@@ -592,6 +619,11 @@ void FUnrealEnginePythonModule::RunFile(char *filename)
 	fclose(fd);
 	if (!eval_ret)
 	{
+		if (PyErr_ExceptionMatches(PyExc_SystemExit))
+		{
+			PyErr_Clear();
+			return;
+		}
 		unreal_engine_py_log_error();
 		return;
 	}
@@ -602,9 +634,14 @@ void FUnrealEnginePythonModule::RunFile(char *filename)
 	PyObject *eval_ret = PyRun_String(TCHAR_TO_UTF8(*command), Py_file_input, (PyObject *)main_dict, (PyObject *)local_dict);
 	if (!eval_ret)
 	{
+		if (PyErr_ExceptionMatches(PyExc_SystemExit))
+		{
+			PyErr_Clear();
+			return;
+		}
 		unreal_engine_py_log_error();
 		return;
-}
+	}
 #endif
 
 }

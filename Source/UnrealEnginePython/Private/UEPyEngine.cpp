@@ -317,7 +317,7 @@ PyObject *py_unreal_engine_unload_package(PyObject * self, PyObject * args)
 	FText outErrorMsg;
 	if (!PackageTools::UnloadPackages({ packageToUnload }, outErrorMsg))
 	{
-		return PyErr_Format(PyExc_Exception, TCHAR_TO_UTF8(*outErrorMsg.ToString()));
+		return PyErr_Format(PyExc_Exception, "%s", TCHAR_TO_UTF8(*outErrorMsg.ToString()));
 	}
 
 	Py_RETURN_NONE;
@@ -721,72 +721,24 @@ PyObject *py_unreal_engine_tobject_iterator(PyObject * self, PyObject * args)
 	return ret;
 }
 
-PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObject * args) {
-
-	PyObject *py_callable = nullptr;
-	PyObject *py_params = nullptr;
-
-	Py_ssize_t TupleSize = PyTuple_Size(args);
-
-	if (TupleSize == 1)
+PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObject * args)
+{
+	PyObject *py_callable;
+	int named_thread = (int)ENamedThreads::GameThread;
+	if (!PyArg_ParseTuple(args, "O|i:create_and_dispatch_when_ready", &py_callable, &named_thread))
 	{
-		//function with no params
-		if (!PyArg_ParseTuple(args, "O:create_and_dispatch_when_ready", &py_callable))
-		{
-			UE_LOG(LogPython, Log, TEXT("PyArg_ParseTuple without params failed"));
-			unreal_engine_py_log_error();
-			return NULL;
-		}
+		return NULL;
 	}
-	else
-	{
-		//function with params
-		if (!PyArg_ParseTuple(args, "OO:create_and_dispatch_when_ready", &py_callable, &py_params))
-		{
-			UE_LOG(LogPython, Log, TEXT("PyArg_ParseTuple with params failed"));
-			unreal_engine_py_log_error();
-
-			//Not an acceptable format, exit
-			return NULL;
-		}
-	}
-
-	//UE_LOG(LogPython, Log, TEXT("Start Task in Game thread? %d"), IsInGameThread());
 
 	if (!PyCallable_Check(py_callable))
-	{
 		return PyErr_Format(PyExc_TypeError, "argument is not callable");
-	}
 
 	Py_INCREF(py_callable);
-	if (py_params)
-	{
-		Py_INCREF(py_params);
-	}
-
-	const PyObject* py_callable_s = py_callable;
-	const PyObject* py_params_s = py_params;
 
 
-	FGraphEventRef task = FFunctionGraphTask::CreateAndDispatchWhenReady([&, py_callable_s, py_params_s]() {
-		//UE_LOG(LogPython, Log, TEXT("In task graph, are in game thread? %d"), IsInGameThread());
+	FGraphEventRef task = FFunctionGraphTask::CreateAndDispatchWhenReady([&]() {
 		FScopePythonGIL gil;
-		PyObject *ret = nullptr;
-		PyObject *py_tuple_params = nullptr;
-
-		//do we have parameters?
-		if (py_params_s)
-		{
-			py_tuple_params = PyTuple_New(1);
-			PyTuple_SetItem(py_tuple_params, 0, (PyObject*)py_params_s);
-			ret = PyObject_CallObject((PyObject*)py_callable_s, py_tuple_params);
-		}
-		else
-		{
-			ret = PyObject_CallObject((PyObject*)py_callable_s, nullptr);
-		}
-
-		//did we get a valid return from our call?
+		PyObject *ret = PyObject_CallObject(py_callable, nullptr);
 		if (ret)
 		{
 			Py_DECREF(ret);
@@ -795,19 +747,17 @@ PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject * self, PyObj
 		{
 			unreal_engine_py_log_error();
 		}
-		if (py_params_s)
-		{
-			Py_DECREF(py_params_s);
-		}
-		if (py_tuple_params)
-		{
-			Py_DECREF(py_tuple_params);
-		}
-		Py_DECREF(py_callable_s);
-	}, TStatId(), nullptr, ENamedThreads::GameThread);
+		Py_DECREF(py_callable);
+	}, TStatId(), nullptr, (ENamedThreads::Type)named_thread);
 
-	Py_INCREF(Py_None);
-	return Py_None;
+
+	Py_BEGIN_ALLOW_THREADS;
+	FTaskGraphInterface::Get().WaitUntilTaskCompletes(task);
+	Py_END_ALLOW_THREADS;
+	// TODO Implement signal triggering in addition to WaitUntilTaskCompletes
+	// FTaskGraphInterface::Get().TriggerEventWhenTaskCompletes
+
+	Py_RETURN_NONE;
 }
 
 

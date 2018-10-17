@@ -23,6 +23,8 @@ public class UnrealEnginePython : ModuleRules
 
 
     // otherwise specify the path of your python installation
+    //private string PythonHome = "C:/Program Files/Python36";
+    // this is an example for Homebrew on Mac
     //private string PythonHome = "/usr/local/Cellar/python3/3.6.0/Frameworks/Python.framework/Versions/3.6/";
     // on Linux an include;libs syntax is expected:
     //private string PythonHome = "/usr/local/include/python3.6;/usr/local/lib/libpython3.6.so"
@@ -298,8 +300,9 @@ public class UnrealEnginePython : ModuleRules
                 }
                 PublicIncludePaths.Add(includesPath);
                 PublicAdditionalLibraries.Add(libsPath);
+
             }
-            else if (Target.Platform == UnrealTargetPlatform.Linux)
+            else
             {
                 string[] items = PythonHome.Split(';');
                 PublicIncludePaths.Add(items[0]);
@@ -370,7 +373,7 @@ public class UnrealEnginePython : ModuleRules
         List<string> paths = new List<string>(linuxKnownLibsPaths);
         paths.Insert(0, Path.Combine(ModuleDirectory, "../../Binaries", "Linux", "lib"));
         paths.Insert(0, Path.Combine(ModuleDirectory, "../../Binaries", "Linux", "lib64"));
-        foreach (string path in linuxKnownLibsPaths)
+        foreach (string path in paths)
         {
             if (File.Exists(path))
             {
