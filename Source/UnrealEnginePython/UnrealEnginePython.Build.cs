@@ -3,6 +3,7 @@
 using UnrealBuildTool;
 using System.IO;
 using System.Collections.Generic;
+//using Tools.DotNETCommon;
 
 public class UnrealEnginePython : ModuleRules
 {
@@ -10,9 +11,10 @@ public class UnrealEnginePython : ModuleRules
     // leave this string as empty for triggering auto-discovery of python installations...
     private string PythonHome = "";
     bool UseThirdPartyPython = true;    //embedded
+	bool AutoAddProjectScriptsInPackaging = true;
 
-    //Or use the one included in third party folder
-    protected string ThirdPartyPythonHome
+	//Or use the one included in third party folder
+	protected string ThirdPartyPythonHome
     {
         get
         {
@@ -43,7 +45,50 @@ public class UnrealEnginePython : ModuleRules
 		get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../../Binaries/")); }
 	}
 
-    private string[] windowsKnownPaths =
+	private string ScriptsPath
+	{
+		get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../../Content/Scripts/")); }
+	}
+
+	public void AddRuntimeDependenciesForCopying(ReadOnlyTargetRules Target)
+	{
+		if ((Target.Platform == UnrealTargetPlatform.Win64) || (Target.Platform == UnrealTargetPlatform.Win32))
+		{
+			RuntimeDependencies.Add(Path.Combine(ScriptsPath, "..."));
+
+			if(AutoAddProjectScriptsInPackaging)
+			{
+				RuntimeDependencies.Add("$(ProjectDir)/Content/Scripts/...");
+			}
+			//Copy binaries as dependencies
+			if(UseThirdPartyPython)
+			{
+				string PlatformString = Target.Platform.ToString();
+				bool VerboseBuild = false;
+
+				//Don't add android stuff so we use a manual method to enum a directory
+				Tools.DotNETCommon.DirectoryReference BinDir = new Tools.DotNETCommon.DirectoryReference(Path.Combine(BinariesPath, PlatformString, "..."));
+
+				if (Tools.DotNETCommon.DirectoryReference.Exists(BinDir))
+				{
+					foreach (Tools.DotNETCommon.FileReference File in Tools.DotNETCommon.DirectoryReference.EnumerateFiles(BinDir, "*", SearchOption.AllDirectories))
+					{
+						if (!File.ToString().Contains("android"))
+						{
+							RuntimeDependencies.Add(File.ToString());
+						}
+						else if (VerboseBuild)
+						{
+							Log.TraceInformation("Not adding the following file as RuntimeDependency: ");
+							Log.TraceInformation(File.ToString());
+						}
+					}
+				}
+			}
+		}
+	}
+
+	private string[] windowsKnownPaths =
     {
         "C:/Program Files/Python37",
         "C:/Program Files/Python36",
@@ -247,6 +292,8 @@ public class UnrealEnginePython : ModuleRules
 
 				string dllPath = Path.Combine(BinariesPath, "Win64", string.Format("{0}.dll", PythonType.ToLower()));
 				RuntimeDependencies.Add(dllPath);
+
+				AddRuntimeDependenciesForCopying(Target);
 			}
 			else if (PythonHome == "")
 			{
