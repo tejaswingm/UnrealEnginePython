@@ -444,6 +444,7 @@ static PyMethodDef unreal_engine_methods[] = {
 
 
 	{ "create_and_dispatch_when_ready", py_unreal_engine_create_and_dispatch_when_ready, METH_VARARGS, "" },
+	{ "run_on_gt", py_unreal_engine_run_on_gt, METH_VARARGS, "" },
 #if PLATFORM_MAC
 	{ "main_thread_call", py_unreal_engine_main_thread_call, METH_VARARGS, "" },
 #endif
@@ -497,8 +498,6 @@ static PyMethodDef unreal_engine_methods[] = {
 
 	{ "in_editor_capture", py_unreal_engine_in_editor_capture, METH_VARARGS, "" },
 #endif
-	//duplicate for now for testing
-	{ "run_on_gt", py_unreal_engine_create_and_dispatch_when_ready, METH_VARARGS, "" },
 
 	{ "clipboard_copy", py_unreal_engine_clipboard_copy, METH_VARARGS, "" },
 	{ "clipboard_paste", py_unreal_engine_clipboard_paste, METH_VARARGS, "" },

@@ -65,6 +65,7 @@ PyObject *py_unreal_engine_get_mutable_default(PyObject *, PyObject *);
 
 
 PyObject *py_unreal_engine_create_and_dispatch_when_ready(PyObject *, PyObject *);
+PyObject *py_unreal_engine_run_on_gt(PyObject *, PyObject *);
 
 PyObject *py_unreal_engine_convert_relative_path_to_full(PyObject *, PyObject *);
 

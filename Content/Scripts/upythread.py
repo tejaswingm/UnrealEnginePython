@@ -9,11 +9,14 @@ def backgroundAction(args=None):
 		callback = args[1]
 
 	#call the blocking action
-	action()
+	result = action()
 
 	#return the result if we have a callback
 	if callback:
-		ue.run_on_gt(callback)
+		if result is not None:
+			ue.run_on_gt(callback, result)
+		else:
+			ue.run_on_gt(callback)
 
 #run function on a background thread, optional callback when complete on game thread
 def run_on_bt(actionfunction, callback=None):
