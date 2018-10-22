@@ -64,7 +64,7 @@ public class UnrealEnginePython : ModuleRules
 			if(UseThirdPartyPython)
 			{
 				string PlatformString = Target.Platform.ToString();
-				bool VerboseBuild = false;
+				bool bVerboseBuild = false;
 
 				//Don't add android stuff so we use a manual method to enum a directory
 				Tools.DotNETCommon.DirectoryReference BinDir = new Tools.DotNETCommon.DirectoryReference(Path.Combine(BinariesPath, PlatformString, "..."));
@@ -73,11 +73,15 @@ public class UnrealEnginePython : ModuleRules
 				{
 					foreach (Tools.DotNETCommon.FileReference File in Tools.DotNETCommon.DirectoryReference.EnumerateFiles(BinDir, "*", SearchOption.AllDirectories))
 					{
-						if (!File.ToString().Contains("android"))
+						//if (!File.ToString().Contains("android"))
+						bool bValidFile = !File.ToString().Contains("Lib\\site-packages");	//don't copy site-packages (staging path likely too long) 
+						bValidFile = bValidFile && !File.ToString().Contains("Binaries\\Win64\\UE4Editor");	//don't copy UEEditor dll/pdbs. These are not used
+
+						if (bValidFile)
 						{
 							RuntimeDependencies.Add(File.ToString());
 						}
-						else if (VerboseBuild)
+						else if (bVerboseBuild)
 						{
 							Log.TraceInformation("Not adding the following file as RuntimeDependency: ");
 							Log.TraceInformation(File.ToString());
