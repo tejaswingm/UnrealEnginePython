@@ -50,6 +50,43 @@ public class UnrealEnginePython : ModuleRules
 		get { return Path.GetFullPath(Path.Combine(ModuleDirectory, "../../Content/Scripts/")); }
 	}
 
+	public string GetUProjectPath()
+	{
+		return Path.Combine(ModuleDirectory, "../../../..");
+	}
+
+	private void CopyToProjectBinaries(string Filepath, ReadOnlyTargetRules Target)
+	{
+		//System.Console.WriteLine("uprojectpath is: " + Path.GetFullPath(GetUProjectPath()));
+
+		string BinariesDir = Path.Combine(GetUProjectPath(), "Binaries", Target.Platform.ToString());
+		string Filename = Path.GetFileName(Filepath);
+
+		//convert relative path 
+		string FullBinariesDir = Path.GetFullPath(BinariesDir);
+
+		if (!Directory.Exists(FullBinariesDir))
+		{
+			Directory.CreateDirectory(FullBinariesDir);
+		}
+
+		string FullExistingPath = Path.Combine(FullBinariesDir, Filename);
+		bool ValidFile = false;
+
+		//File exists, check if they're the same
+		if (File.Exists(FullExistingPath))
+		{
+			ValidFile = true;
+		}
+
+		//No valid existing file found, copy new dll
+		if(!ValidFile)
+		{
+			File.Copy(Filepath, Path.Combine(FullBinariesDir, Filename), true);
+		}
+	}
+
+
 	public void AddRuntimeDependenciesForCopying(ReadOnlyTargetRules Target)
 	{
 		if ((Target.Platform == UnrealTargetPlatform.Win64) || (Target.Platform == UnrealTargetPlatform.Win32))
@@ -88,8 +125,18 @@ public class UnrealEnginePython : ModuleRules
 						}
 					}
 				}
-			}
-		}
+
+				//Copy the thirdparty dll so ue4 loads it by default
+				string DLLName = PythonType.ToLower() + ".dll";
+				string PluginDLLPath = Path.Combine(BinariesPath, PlatformString, DLLName);
+				CopyToProjectBinaries(PluginDLLPath, Target);
+
+				//After it's been copied add it as a dependency so it gets copied on packaging
+				string DLLPath = Path.GetFullPath(Path.Combine(GetUProjectPath(), "Binaries", PlatformString, DLLName));
+				RuntimeDependencies.Add(DLLPath);
+
+			}//end if thirdparty
+		}//end windows
 	}
 
 	private string[] windowsKnownPaths =
