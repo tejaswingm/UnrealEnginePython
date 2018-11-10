@@ -118,11 +118,11 @@ public class UnrealEnginePython : ModuleRules
 						{
 							RuntimeDependencies.Add(File.ToString());
 						}
-						else if (bVerboseBuild)
+						/*else if (bVerboseBuild)
 						{
 							Log.TraceInformation("Not adding the following file as RuntimeDependency: ");
 							Log.TraceInformation(File.ToString());
-						}
+						}*/
 					}
 				}
 
