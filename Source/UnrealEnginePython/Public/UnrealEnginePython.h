@@ -9,8 +9,8 @@
 //#define UEPY_MEMORY_DEBUG	1
 
 #include "CoreMinimal.h"
-#include "ModuleManager.h"
-#include "Styling/SlateStyle.h"
+#include "Runtime/Core/Public/Modules/ModuleManager.h"
+#include "Runtime/SlateCore/Public/Styling/SlateStyle.h"
 #include "UObject/ScriptMacros.h"
 #include "Runtime/Launch/Resources/Version.h"
 
@@ -18,6 +18,9 @@
 #include <Headers/Python.h>
 #include <Headers/structmember.h>
 #elif PLATFORM_LINUX
+#include <Python.h>
+#include <structmember.h>
+#elif PLATFORM_ANDROID
 #include <Python.h>
 #include <structmember.h>
 #elif PLATFORM_WINDOWS

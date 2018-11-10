@@ -158,10 +158,10 @@ public:
 				Py_DECREF((PyObject *)Tracker->PyUObject);
 			UnregisterPyUObject(Object);
 			return nullptr;
-		}
+	}
 
 		return Tracker->PyUObject;
-	}
+}
 
 	uint32 PyUObjectsGC()
 	{
@@ -181,13 +181,13 @@ public:
 #endif
 				BrokenList.Add(Object);
 				Garbaged++;
-			}
+		}
 			else
 			{
 #if defined(UEPY_MEMORY_DEBUG)
 				UE_LOG(LogPython, Error, TEXT("UObject at %p %s is in use"), Object, *Object->GetName());
 #endif
-			}
+	}
 		}
 
 		for (UObject *Object : BrokenList)
@@ -236,7 +236,7 @@ public:
 
 		}
 		return Garbaged;
-	}
+		}
 
 	UPythonDelegate *NewDelegate(UObject *Owner, PyObject *PyCallable, UFunction *Signature)
 	{

@@ -37,6 +37,11 @@ const char *ue4_module_options = "linux_global_symbols";
 #include "Runtime/Projects/Public/Interfaces/IPluginManager.h"
 #include "Runtime/Core/Public/HAL/FileManagerGeneric.h"
 
+#if PLATFORM_ANDROID
+#include "Android/AndroidJNI.h"
+#include "Android/AndroidApplication.h"
+#endif
+
 const char *UEPyUnicode_AsUTF8(PyObject *py_str)
 {
 #if PY_MAJOR_VERSION < 3
@@ -403,8 +408,57 @@ void FUnrealEnginePythonModule::StartupModule()
 		FPlatformMisc::SetEnvironmentVar(TEXT("PATH"), *ModifiedPath);
 	}
 
+
+
 #if PY_MAJOR_VERSION >= 3
 	init_unreal_engine_builtin();
+#if PLATFORM_ANDROID
+	extern FString GOBBFilePathBase;
+	extern FString GFilePathBase;
+	extern FString GExternalFilePath;
+	extern FString GPackageName;
+	extern int32 GAndroidPackageVersion;
+	FString OBBDir1 = GOBBFilePathBase + FString(TEXT("/Android/obb/") + GPackageName);
+	FString OBBDir2 = GOBBFilePathBase + FString(TEXT("/obb/") + GPackageName);
+	FString MainOBBName = FString::Printf(TEXT("main.%d.%s.obb"), GAndroidPackageVersion, *GPackageName);
+	FString PatchOBBName = FString::Printf(TEXT("patch.%d.%s.obb"), GAndroidPackageVersion, *GPackageName);
+	FString UnrealEnginePython_OBBPath;
+	if (FPaths::FileExists(*(OBBDir1 / MainOBBName)))
+	{
+		UnrealEnginePython_OBBPath = OBBDir1 / MainOBBName / FApp::GetProjectName() / FString(TEXT("Content/Scripts"));
+	}
+	else if (FPaths::FileExists(*(OBBDir2 / MainOBBName)))
+	{
+		UnrealEnginePython_OBBPath = OBBDir2 / MainOBBName / FApp::GetProjectName() / FString(TEXT("Content/Scripts"));
+	}
+	if (FPaths::FileExists(*(OBBDir1 / PatchOBBName)))
+	{
+		UnrealEnginePython_OBBPath = OBBDir1 / PatchOBBName / FApp::GetProjectName() / FString(TEXT("Content/Scripts"));
+	}
+	else if (FPaths::FileExists(*(OBBDir2 / PatchOBBName)))
+	{
+		UnrealEnginePython_OBBPath = OBBDir1 / PatchOBBName / FApp::GetProjectName() / FString(TEXT("Content/Scripts"));
+	}
+
+	if (!UnrealEnginePython_OBBPath.IsEmpty())
+	{
+		ScriptsPaths.Add(UnrealEnginePython_OBBPath);
+	}
+
+	FString FinalPath = GFilePathBase / FString("UE4Game") / FApp::GetProjectName() / FApp::GetProjectName() / FString(TEXT("Content/Scripts"));
+	ScriptsPaths.Add(FinalPath);
+
+	FString BasePythonPath = FinalPath / FString(TEXT("stdlib.zip")) + FString(":") + FinalPath;
+
+	if (!UnrealEnginePython_OBBPath.IsEmpty())
+	{
+		BasePythonPath += FString(":") + UnrealEnginePython_OBBPath;
+	}
+
+	UE_LOG(LogPython, Warning, TEXT("Setting Base Path to %s"), *BasePythonPath);
+
+	Py_SetPath(Py_DecodeLocale(TCHAR_TO_UTF8(*BasePythonPath), NULL));
+#endif
 #endif
 
 	Py_Initialize();

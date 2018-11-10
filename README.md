@@ -40,7 +40,7 @@ The currently supported Unreal Engine versions are 4.12, 4.13, 4.14, 4.15, 4.16,
 
 We support official python.org releases as well as IntelPython and Anaconda distributions.
 
-Note: this plugin has nothing to do with the experimental 'PythonScriptPlugin' included in Unreal Engine >= 4.19. We aim at full integration with engine and editor (included the Slate api), as well as support for the vast majority of python features like asyncio, coroutines, generators, threads and third party modules.
+Note: this plugin has nothing to do with the experimental 'PythonScriptPlugin' included in Unreal Engine >= 4.19. We aim at full integration with engine and editor (included the Slate api, check here: https://github.com/20tab/UnrealEnginePython/blob/master/docs/Slate_API.md), as well as support for the vast majority of python features like asyncio, coroutines, generators, threads and third party modules.
 
 # Binary installation on Windows (64 bit)
 
@@ -171,9 +171,14 @@ Just remove the .so files in Plugins/UnrealEnginePython/Binaries/Linux and pull 
 
 At the next run the build procedure wil be started again.
 
+Android Deployment
+------------------
+
+Check https://github.com/20tab/UnrealEnginePython/blob/master/docs/Android.md
+
 # Installation on other platforms
 
-Currently only Windows, MacOSX and Linux are supported. We are investigating Android support too via the kivy project.
+Currently only Windows, MacOSX, Linux and Android are supported.
 
 # Using Python with Unreal Engine (finally)
 
@@ -432,6 +437,27 @@ vec = self.uobject.GetActorLocation()
 
 Reflection based functions are those in camelcase (or with the first capital letter). Native functions instead follow the python style, with lower case, underscore-as-separator function names.
 
+Note that, in editor builds, when you change the property of an archetype (included ClassDefaultObject) via __setattr__ all of the archtype instances will be updated too.
+
+To be more clear:
+
+```python
+your_blueprint.GeneratedClass.get_cdo().CharacterMovement.MaxWalkSpeed = 600.0
+```
+
+is a super shortcut for:
+
+```python
+your_blueprint.GeneratedClass.get_cdo().CharacterMovement.pre_edit_change('MaxWalkSpeed')
+your_blueprint.GeneratedClass.get_cdo().CharacterMovement.set_property('MaxWalkSpeed', 600.0)
+your_blueprint.GeneratedClass.get_cdo().CharacterMovement.post_edit_change_property('MaxWalkSpeed')
+for instance in your_blueprint.GeneratedClass.get_cdo().CharacterMovement.get_archetype_instances():
+    instance.pre_edit_change('MaxWalkSpeed')
+    instance.set_property('MaxWalkSpeed', 600.0)
+    instance.post_edit_change_property('MaxWalkSpeed')
+```
+
+
 The automagic UClass, UStruct and UEnums mappers
 ------------------------------------------------
 
@@ -479,8 +505,6 @@ if is_hitting_something:
     ue.log(hit_result)
 ```
 
-Remember that structs are passed by value (not by ref like UObject's), so a dedicated unreal_engine.UScriptStruct python class is exposed.
-
 To create a new struct instance you can do:
 
 ```python
@@ -501,29 +525,6 @@ To access the fields of a struct just call the fields() method.
 
 A good example of struct usage is available here: https://github.com/20tab/UnrealEnginePython/blob/master/docs/Settings.md
 
-As structs are passed by value, you need to pay attention when manipulating structs fields that are structs by themselves:
-
-```python
-from unreal_engine.structs import TerrificStruct, DumbStruct
-
-ts = TerrificStruct()
-ts.dumb = DumbStruct(Foo=17, Bar=22)
-
-# will not modify the original DumbStruct but a copy of it !!!
-ts.dumb.Foo = 22
-```
-
-You can eventually force structs to be passed by ref (extremely dangerous as the internal C pointer could be a dangling one) using the ref() function:
-
-```python
-from unreal_engine.structs import TerrificStruct, DumbStruct
-
-ts = TerrificStruct()
-ts.dumb = DumbStruct(Foo=17, Bar=22)
-
-# ref() will return a pointer to a struct
-ts.ref().dumb.foo().Foo = 22
-```
 
 More details here: https://github.com/20tab/UnrealEnginePython/blob/master/docs/MemoryManagement.md
 
@@ -691,6 +692,7 @@ The following parameters are supported:
 * `RelativeAdditionalModulesPath`: like AdditionalModulesPath, but the path is relative to the /Content directory
 * `ZipPath`: allow to specify a .zip file that is added to sys.path
 * `RelativeZipPath`: like ZipPath, but the path is relative to the /Content directory
+* `ImportModules: comma/space/semicolon separated list of modules to import on startup (after ue_site)
 
 Example:
 
@@ -947,9 +949,9 @@ We try to do our best to "protect" the user, but you can effectively crash UE fr
 Contacts and Commercial Support
 -------------------------------
 
-If you want to contact us (for help, support, sponsorship), drop a mail to info at 20tab.com or follow @unbit on twitter
+If you need commercial support for UnrealEnginePython just drop a mail to info at 20tab.com
 
-We offer commercial support for both UnrealEngine and UnrealEnginePython, again drop a mail to info at 20tab.com for more infos
+Follow @unbit on twitter for news about the project
 
 Special Thanks
 --------------

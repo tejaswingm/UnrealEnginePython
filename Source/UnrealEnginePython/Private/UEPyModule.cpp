@@ -619,6 +619,12 @@ static PyMethodDef ue_PyUObject_methods[] = {
 #if WITH_EDITOR
 	{ "get_thumbnail", (PyCFunction)py_ue_get_thumbnail, METH_VARARGS, "" },
 	{ "render_thumbnail", (PyCFunction)py_ue_render_thumbnail, METH_VARARGS, "" },
+	{"get_metadata_tag", (PyCFunction)py_ue_get_metadata_tag, METH_VARARGS, "" },
+	{"set_metadata_tag", (PyCFunction)py_ue_set_metadata_tag, METH_VARARGS, "" },
+	{ "metadata_tags", (PyCFunction)py_ue_metadata_tags, METH_VARARGS, "" },
+	{ "has_metadata_tag", (PyCFunction)py_ue_has_metadata_tag, METH_VARARGS, "" },
+	{"remove_metadata_tag", (PyCFunction)py_ue_remove_metadata_tag, METH_VARARGS, "" },
+
 #endif
 
 #if WITH_EDITOR
@@ -874,6 +880,7 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "set_current_level", (PyCFunction)py_ue_set_current_level, METH_VARARGS, "" },
 
 #if WITH_EDITOR
+	{ "get_level_script_blueprint", (PyCFunction)py_ue_get_level_script_blueprint, METH_VARARGS, "" },
 	{ "add_foliage_asset", (PyCFunction)py_ue_add_foliage_asset, METH_VARARGS, "" },
 	{ "get_foliage_instances", (PyCFunction)py_ue_get_foliage_instances, METH_VARARGS, "" },
 #endif
@@ -1072,6 +1079,8 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "sequencer_get_camera_cut_track", (PyCFunction)py_ue_sequencer_get_camera_cut_track, METH_VARARGS, "" },
 #if WITH_EDITOR
 	{ "sequencer_set_playback_range", (PyCFunction)py_ue_sequencer_set_playback_range, METH_VARARGS, "" },
+	{ "sequencer_set_view_range", (PyCFunction)py_ue_sequencer_set_view_range, METH_VARARGS, "" },
+	{ "sequencer_set_working_range", (PyCFunction)py_ue_sequencer_set_working_range, METH_VARARGS, "" },
 	{ "sequencer_set_section_range", (PyCFunction)py_ue_sequencer_set_section_range, METH_VARARGS, "" },
 	{ "sequencer_folders", (PyCFunction)py_ue_sequencer_folders, METH_VARARGS, "" },
 	{ "sequencer_create_folder", (PyCFunction)py_ue_sequencer_create_folder, METH_VARARGS, "" },
@@ -1130,6 +1139,8 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "static_mesh_generate_kdop10z", (PyCFunction)py_ue_static_mesh_generate_kdop10z, METH_VARARGS, "" },
 	{ "static_mesh_generate_kdop18", (PyCFunction)py_ue_static_mesh_generate_kdop18, METH_VARARGS, "" },
 	{ "static_mesh_generate_kdop26", (PyCFunction)py_ue_static_mesh_generate_kdop26, METH_VARARGS, "" },
+
+	{ "static_mesh_import_lod", (PyCFunction)py_ue_static_mesh_import_lod, METH_VARARGS, "" },
 
 #endif
 
