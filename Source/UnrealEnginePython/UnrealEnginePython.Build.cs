@@ -101,7 +101,6 @@ public class UnrealEnginePython : ModuleRules
 			if(UseThirdPartyPython)
 			{
 				string PlatformString = Target.Platform.ToString();
-				bool bVerboseBuild = false;
 
 				//Don't add android stuff so we use a manual method to enum a directory
 				Tools.DotNETCommon.DirectoryReference BinDir = new Tools.DotNETCommon.DirectoryReference(Path.Combine(BinariesPath, PlatformString, "..."));
@@ -118,11 +117,6 @@ public class UnrealEnginePython : ModuleRules
 						{
 							RuntimeDependencies.Add(File.ToString());
 						}
-						/*else if (bVerboseBuild)
-						{
-							Log.TraceInformation("Not adding the following file as RuntimeDependency: ");
-							Log.TraceInformation(File.ToString());
-						}*/
 					}
 				}
 
@@ -223,7 +217,7 @@ public class UnrealEnginePython : ModuleRules
 
         PublicIncludePaths.AddRange(
             new string[] {
-                "UnrealEnginePython/Public",
+				Path.Combine(ModuleDirectory, "Public"),
 				// ... add public include paths required here ...
             }
             );
@@ -231,7 +225,7 @@ public class UnrealEnginePython : ModuleRules
 
         PrivateIncludePaths.AddRange(
             new string[] {
-                "UnrealEnginePython/Private",
+				Path.Combine(ModuleDirectory, "Private"),
                 PythonHome,
 				// ... add other private include paths required here ...
 			}
@@ -416,7 +410,7 @@ public class UnrealEnginePython : ModuleRules
 
             string APLName = "UnrealEnginePython_APL.xml";
             string RelAPLPath = Utils.MakePathRelativeTo(System.IO.Path.Combine(ModuleDirectory, APLName), Target.RelativeEnginePath);
-            AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", RelAPLPath));
+            AdditionalPropertiesForReceipt.Add("AndroidPlugin", RelAPLPath);
         }
 #endif
     }
