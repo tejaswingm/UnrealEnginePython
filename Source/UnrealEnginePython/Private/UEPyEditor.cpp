@@ -286,7 +286,7 @@ PyObject *py_unreal_engine_editor_play(PyObject * self, PyObject * args)
 	Py_END_ALLOW_THREADS;
 
 	Py_RETURN_NONE;
-	}
+}
 
 PyObject *py_unreal_engine_editor_select_actor(PyObject * self, PyObject * args)
 {
@@ -462,7 +462,7 @@ PyObject *py_unreal_engine_import_asset(PyObject * self, PyObject * args)
 	}
 
 	Py_RETURN_NONE;
-	}
+}
 
 PyObject *py_unreal_engine_editor_tick(PyObject * self, PyObject * args)
 {
@@ -639,10 +639,11 @@ PyObject *py_unreal_engine_create_asset(PyObject * self, PyObject * args)
 PyObject *py_unreal_engine_get_asset_referencers(PyObject * self, PyObject * args)
 {
 	char *path;
+	int depency_type = (int)EAssetRegistryDependencyType::All;
 
-	if (!PyArg_ParseTuple(args, "s:get_asset_referencers", &path))
+	if (!PyArg_ParseTuple(args, "s|i:get_asset_referencers", &path, &depency_type))
 	{
-		return NULL;
+		return nullptr;
 	}
 
 	if (!GEditor)
@@ -650,7 +651,7 @@ PyObject *py_unreal_engine_get_asset_referencers(PyObject * self, PyObject * arg
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FName> referencers;
-	AssetRegistryModule.Get().GetReferencers(UTF8_TO_TCHAR(path), referencers);
+	AssetRegistryModule.Get().GetReferencers(UTF8_TO_TCHAR(path), referencers, (EAssetRegistryDependencyType::Type) depency_type);
 
 	PyObject *referencers_list = PyList_New(0);
 	for (FName name : referencers)
@@ -660,11 +661,38 @@ PyObject *py_unreal_engine_get_asset_referencers(PyObject * self, PyObject * arg
 	return referencers_list;
 }
 
+PyObject *py_unreal_engine_get_asset_identifier_referencers(PyObject * self, PyObject * args)
+{
+	char *path;
+	int depency_type = (int)EAssetRegistryDependencyType::All;
+
+	if (!PyArg_ParseTuple(args, "s|i:get_asset_identifier_referencers", &path, &depency_type))
+	{
+		return nullptr;
+	}
+
+	if (!GEditor)
+		return PyErr_Format(PyExc_Exception, "no GEditor found");
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	TArray<FAssetIdentifier> referencers;
+	AssetRegistryModule.Get().GetReferencers(FAssetIdentifier::FromString(UTF8_TO_TCHAR(path)), referencers, (EAssetRegistryDependencyType::Type) depency_type);
+
+	PyObject *referencers_list = PyList_New(0);
+	for (FAssetIdentifier identifier : referencers)
+	{
+		PyList_Append(referencers_list, PyUnicode_FromString(TCHAR_TO_UTF8(*identifier.ToString())));
+	}
+	return referencers_list;
+}
+
+
 PyObject *py_unreal_engine_get_asset_dependencies(PyObject * self, PyObject * args)
 {
 	char *path;
+	int depency_type = (int)EAssetRegistryDependencyType::All;
 
-	if (!PyArg_ParseTuple(args, "s:get_asset_dependencies", &path))
+	if (!PyArg_ParseTuple(args, "s|i:get_asset_dependencies", &path, &depency_type))
 	{
 		return NULL;
 	}
@@ -674,7 +702,7 @@ PyObject *py_unreal_engine_get_asset_dependencies(PyObject * self, PyObject * ar
 
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::GetModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	TArray<FName> dependencies;
-	AssetRegistryModule.Get().GetDependencies(UTF8_TO_TCHAR(path), dependencies);
+	AssetRegistryModule.Get().GetDependencies(UTF8_TO_TCHAR(path), dependencies, (EAssetRegistryDependencyType::Type) depency_type);
 
 	PyObject *dependencies_list = PyList_New(0);
 	for (FName name : dependencies)
@@ -695,6 +723,19 @@ PyObject *py_unreal_engine_get_long_package_path(PyObject * self, PyObject * arg
 	const FString package_path = FPackageName::GetLongPackagePath(UTF8_TO_TCHAR(path));
 
 	return PyUnicode_FromString(TCHAR_TO_UTF8(*(package_path)));
+}
+
+PyObject *py_unreal_engine_get_long_package_asset_name(PyObject * self, PyObject * args)
+{
+	char *path;
+	if (!PyArg_ParseTuple(args, "s:get_long_package_asset_name", &path))
+	{
+		return NULL;
+	}
+
+	const FString asset_name = FPackageName::GetLongPackageAssetName(UTF8_TO_TCHAR(path));
+
+	return PyUnicode_FromString(TCHAR_TO_UTF8(*(asset_name)));
 }
 
 PyObject *py_unreal_engine_rename_asset(PyObject * self, PyObject * args)
@@ -755,7 +796,7 @@ PyObject *py_unreal_engine_rename_asset(PyObject * self, PyObject * args)
 #endif
 
 	Py_RETURN_NONE;
-	}
+}
 
 PyObject *py_unreal_engine_duplicate_asset(PyObject * self, PyObject * args)
 {
@@ -1838,7 +1879,11 @@ PyObject *py_unreal_engine_editor_on_asset_post_import(PyObject * self, PyObject
 		return PyErr_Format(PyExc_Exception, "object is not a callable");
 
 	TSharedRef<FPythonSmartDelegate> py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewPythonSmartDelegate(py_callable);
+#if ENGINE_MINOR_VERSION > 21
+	GEditor->GetEditorSubsystem<UImportSubsystem>()->OnAssetPostImport.AddSP(py_delegate, &FPythonSmartDelegate::PyFOnAssetPostImport);
+#else
 	FEditorDelegates::OnAssetPostImport.AddSP(py_delegate, &FPythonSmartDelegate::PyFOnAssetPostImport);
+#endif
 	Py_RETURN_NONE;
 }
 
@@ -2074,7 +2119,7 @@ PyObject *py_unreal_engine_add_level_to_world(PyObject *self, PyObject * args)
 #endif
 
 	Py_RETURN_UOBJECT(level_streaming);
-	}
+}
 
 PyObject *py_unreal_engine_move_selected_actors_to_level(PyObject *self, PyObject * args)
 {
@@ -2492,7 +2537,11 @@ PyObject *py_unreal_engine_unregister_settings(PyObject * self, PyObject * args)
 
 PyObject *py_unreal_engine_all_viewport_clients(PyObject * self, PyObject * args)
 {
+#if ENGINE_MINOR_VERSION > 21
+	TArray<FEditorViewportClient *> clients = GEditor->GetAllViewportClients();
+#else
 	TArray<FEditorViewportClient *> clients = GEditor->AllViewportClients;
+#endif
 	PyObject *py_list = PyList_New(0);
 	for (FEditorViewportClient *client : clients)
 	{
@@ -2606,5 +2655,6 @@ PyObject *py_unreal_engine_export_assets(PyObject * self, PyObject * args)
 
 	Py_RETURN_NONE;
 }
+
 #endif
 

@@ -68,6 +68,51 @@ static bool magic_get_frame_number(UMovieScene *MovieScene, PyObject *py_obj, FF
 }
 
 #if WITH_EDITOR
+#if ENGINE_MINOR_VERSION > 21
+static void ImportTransformChannel(const FRichCurve& Source, FMovieSceneFloatChannel* Dest, FFrameRate DestFrameRate, bool bNegateTangents)
+{
+	TMovieSceneChannelData<FMovieSceneFloatValue> ChannelData = Dest->GetData();
+	ChannelData.Reset();
+	double DecimalRate = DestFrameRate.AsDecimal();
+	for (int32 KeyIndex = 0; KeyIndex < Source.Keys.Num(); ++KeyIndex)
+	{
+		float ArriveTangent = Source.Keys[KeyIndex].ArriveTangent;
+		if (KeyIndex > 0)
+		{
+			ArriveTangent = ArriveTangent / ((Source.Keys[KeyIndex].Value - Source.Keys[KeyIndex - 1].Value) * DecimalRate);
+		}
+
+		float LeaveTangent = Source.Keys[KeyIndex].LeaveTangent;
+		if (KeyIndex < Source.Keys.Num() - 1)
+		{
+			LeaveTangent = LeaveTangent / ((Source.Keys[KeyIndex + 1].Value - Source.Keys[KeyIndex].Value) * DecimalRate);
+		}
+
+		if (bNegateTangents)
+		{
+			ArriveTangent = -ArriveTangent;
+			LeaveTangent = -LeaveTangent;
+		}
+		
+		FFrameNumber KeyTime = (Source.Keys[KeyIndex].Value * DestFrameRate).RoundToFrame();
+		if (ChannelData.FindKey(KeyTime) == INDEX_NONE)
+		{
+			FMovieSceneFloatValue NewKey(Source.Keys[KeyIndex].Value);
+
+			NewKey.InterpMode = Source.Keys[KeyIndex].InterpMode;
+			NewKey.TangentMode = Source.Keys[KeyIndex].TangentMode;
+			NewKey.Tangent.ArriveTangent = ArriveTangent / DestFrameRate.AsDecimal();
+			NewKey.Tangent.LeaveTangent = LeaveTangent / DestFrameRate.AsDecimal();
+			NewKey.Tangent.TangentWeightMode = RCTWM_WeightedNone;
+			NewKey.Tangent.ArriveTangentWeight = 0.0f;
+			NewKey.Tangent.LeaveTangentWeight = 0.0f;
+			ChannelData.AddKey(KeyTime, NewKey);
+		}
+	}
+
+	Dest->AutoSetTangents();
+}
+#else
 static void ImportTransformChannel(const FInterpCurveFloat& Source, FMovieSceneFloatChannel* Dest, FFrameRate DestFrameRate, bool bNegateTangents)
 {
 	TMovieSceneChannelData<FMovieSceneFloatValue> ChannelData = Dest->GetData();
@@ -103,17 +148,26 @@ static void ImportTransformChannel(const FInterpCurveFloat& Source, FMovieSceneF
 
 	Dest->AutoSetTangents();
 }
+#endif
 
 static bool ImportFBXTransform(FString NodeName, UMovieScene3DTransformSection* TransformSection, UnFbx::FFbxCurvesAPI& CurveAPI)
 {
 
 
 	// Look for transforms explicitly
+	FTransform DefaultTransform;
+
+#if ENGINE_MINOR_VERSION > 21
+	FRichCurve Translation[3];
+	FRichCurve EulerRotation[3];
+	FRichCurve Scale[3];
+#else
 	FInterpCurveFloat Translation[3];
 	FInterpCurveFloat EulerRotation[3];
 	FInterpCurveFloat Scale[3];
-	FTransform DefaultTransform;
+#endif
 	CurveAPI.GetConvertedTransformCurveData(NodeName, Translation[0], Translation[1], Translation[2], EulerRotation[0], EulerRotation[1], EulerRotation[2], Scale[0], Scale[1], Scale[2], DefaultTransform);
+
 
 	TransformSection->Modify();
 
@@ -915,6 +969,26 @@ PyObject *py_ue_sequencer_set_playback_range(ue_PyUObject *self, PyObject * args
 	Py_RETURN_NONE;
 }
 
+PyObject *py_ue_sequencer_get_playback_range(ue_PyUObject *self, PyObject * args)
+{
+
+	ue_py_check(self);
+
+	ULevelSequence *seq = ue_py_check_type<ULevelSequence>(self);
+	if (!seq)
+		return PyErr_Format(PyExc_Exception, "uobject is not a LevelSequence");
+	UMovieScene	*scene = seq->GetMovieScene();
+
+#if ENGINE_MINOR_VERSION < 20
+	TRange<float> range = scene->GetPlaybackRange();
+	return Py_BuildValue("(ff)", range.GetLowerBoundValue(), range.GetUpperBoundValue());
+#else
+	TRange<FFrameNumber> range = scene->GetPlaybackRange();
+
+	return Py_BuildValue("(OO)", py_ue_new_fframe_number(range.GetLowerBoundValue()), py_ue_new_fframe_number(range.GetUpperBoundValue()));
+
+#endif
+}
 
 PyObject *py_ue_sequencer_set_working_range(ue_PyUObject *self, PyObject * args)
 {
@@ -1013,6 +1087,27 @@ PyObject *py_ue_sequencer_set_section_range(ue_PyUObject *self, PyObject * args)
 #endif
 
 	Py_RETURN_NONE;
+}
+
+PyObject *py_ue_sequencer_get_selection_range(ue_PyUObject *self, PyObject * args)
+{
+
+	ue_py_check(self);
+
+	ULevelSequence *seq = ue_py_check_type<ULevelSequence>(self);
+	if (!seq)
+		return PyErr_Format(PyExc_Exception, "uobject is not a LevelSequence");
+	UMovieScene	*scene = seq->GetMovieScene();
+
+#if ENGINE_MINOR_VERSION < 20
+	TRange<float> range = scene->GetSelectionRange();
+	return Py_BuildValue("(ff)", range.GetLowerBoundValue(), range.GetUpperBoundValue());
+#else
+	TRange<FFrameNumber> range = scene->GetSelectionRange();
+
+	return Py_BuildValue("(OO)", py_ue_new_fframe_number(range.GetLowerBoundValue()), py_ue_new_fframe_number(range.GetUpperBoundValue()));
+
+#endif
 }
 
 
@@ -1554,9 +1649,15 @@ PyObject *py_ue_sequencer_import_fbx_transform(ue_PyUObject *self, PyObject * ar
 			continue;
 
 		// Look for transforms explicitly
+#if ENGINE_MINOR_VERSION > 21
+		FRichCurve Translation[3];
+		FRichCurve EulerRotation[3];
+		FRichCurve Scale[3];
+#else
 		FInterpCurveFloat Translation[3];
 		FInterpCurveFloat EulerRotation[3];
 		FInterpCurveFloat Scale[3];
+#endif
 		FTransform DefaultTransform;
 #if ENGINE_MINOR_VERSION >= 18
 		CurveAPI.GetConvertedTransformCurveData(NodeName, Translation[0], Translation[1], Translation[2], EulerRotation[0], EulerRotation[1], EulerRotation[2], Scale[0], Scale[1], Scale[2], DefaultTransform);
