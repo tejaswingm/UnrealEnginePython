@@ -92,6 +92,8 @@ Binaries/
 
 #don't update this file again
 Content/Scripts/upyconfig.json
+Intermediate/
+
 python35/
 python27/
 *.un~
