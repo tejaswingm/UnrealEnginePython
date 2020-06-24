@@ -12,7 +12,6 @@
 #include "UnrealEd.h"
 #include "FbxMeshUtils.h"
 #include "Kismet2/BlueprintEditorUtils.h"
-
 #include "Editor/LevelEditor/Public/LevelEditorActions.h"
 #include "Editor/UnrealEd/Public/EditorLevelUtils.h"
 #include "Runtime/Projects/Public/Interfaces/IPluginManager.h"
@@ -41,7 +40,6 @@
 #include "Runtime/Engine/Public/EditorSupportDelegates.h"
 
 #include "UEPyIPlugin.h"
-
 
 PyObject *py_unreal_engine_redraw_all_viewports(PyObject * self, PyObject * args)
 {

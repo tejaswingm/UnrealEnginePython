@@ -7,7 +7,6 @@
 #include "PythonEditorStyle.h"
 #include "PythonProjectEditor.h"
 #include "PythonProject.h"
-#include "Subsystems/AssetEditorSubsystem.h"
 #include "Runtime/Slate/Public/Framework/MultiBox/MultiBoxBuilder.h"
 
 static const FName PythonEditorTabName( TEXT( "PythonEditor" ) );

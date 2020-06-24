@@ -2,7 +2,6 @@
 #include "PythonDelegate.h"
 #include "UEPyModule.h"
 #include "UEPyCallable.h"
-#include "UObject/UEPyUPropertyBackwardsCompatibility.h"
 
 UPythonDelegate::UPythonDelegate()
 {

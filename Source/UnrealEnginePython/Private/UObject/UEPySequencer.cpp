@@ -8,7 +8,6 @@
 #include "Runtime/LevelSequence/Public/LevelSequence.h"
 
 #if WITH_EDITOR
-#include "Subsystems/AssetEditorSubsystem.h"
 #include "Editor/Sequencer/Public/ISequencer.h"
 #include "Editor/Sequencer/Public/ISequencerModule.h"
 #include "Editor/UnrealEd/Public/Toolkits/AssetEditorManager.h"
@@ -210,9 +209,9 @@ static bool ImportFBXTransform(FString NodeName, UMovieScene3DTransformSection* 
 #endif
 
 #if WITH_EDITOR
-
 PyObject *py_ue_sequencer_changed(ue_PyUObject *self, PyObject * args)
 {
+
 	ue_py_check(self);
 
 	PyObject *py_bool = nullptr;

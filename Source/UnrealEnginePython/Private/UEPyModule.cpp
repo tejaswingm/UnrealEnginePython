@@ -38,8 +38,6 @@
 #include "UObject/UEPyExporter.h"
 #include "UObject/UEPyFoliage.h"
 
-#include "UObject/UEPyUPropertyBackwardsCompatibility.h"
-
 
 #include "UEPyAssetUserData.h"
 #if WITH_EDITOR
