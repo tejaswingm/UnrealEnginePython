@@ -1,3 +1,5 @@
+#pragma once
+
 #if ENGINE_MINOR_VERSION < 25
 //UE4.25 refactored UProperties to no longer be UObjects
 //For compatibility with older engines, added a typedef here rather than polluting code throughout
