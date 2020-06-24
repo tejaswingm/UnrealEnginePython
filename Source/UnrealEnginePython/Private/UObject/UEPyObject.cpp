@@ -190,7 +190,7 @@ PyObject *py_ue_get_property_struct(ue_PyUObject * self, PyObject * args)
 	if (!u_property)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
 
-	FStructProperty *prop = Cast<FStructProperty>(u_property);
+	FStructProperty *prop = CastField<FStructProperty>(u_property);
 	if (!prop)
 		return PyErr_Format(PyExc_Exception, "object is not a StructProperty");
 	return py_ue_new_uscriptstruct(prop->Struct, prop->ContainerPtrToValuePtr<uint8>(self->ue_object));

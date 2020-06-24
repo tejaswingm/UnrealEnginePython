@@ -344,15 +344,13 @@ int unreal_engine_py_init(ue_PyUObject *self, PyObject *args, PyObject *kwds)
 							FProperty *u_property = ObjectInitializer.GetObj()->GetClass()->FindPropertyByName(FName(UTF8_TO_TCHAR(mc_name)));
 							if (u_property)
 							{
-								if (auto casted_prop = Cast<FMulticastDelegateProperty>(u_property))
+								if (auto casted_prop = CastField<FMulticastDelegateProperty>(u_property))
 								{
 #if ENGINE_MINOR_VERSION >= 23
 									FMulticastScriptDelegate multiscript_delegate = *casted_prop->GetMulticastDelegate(ObjectInitializer.GetObj());
 #else
-									
 									FMulticastScriptDelegate multiscript_delegate = casted_prop->GetPropertyValue_InContainer(ObjectInitializer.GetObj());
 #endif
-
 									FScriptDelegate script_delegate;
 									UPythonDelegate *py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewDelegate(ObjectInitializer.GetObj(), mc_value, casted_prop->SignatureFunction);
 									// fake UFUNCTION for bypassing checks

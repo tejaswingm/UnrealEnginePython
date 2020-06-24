@@ -36,4 +36,6 @@ typedef USoftClassProperty FSoftClassProperty;
 
 typedef UNumericProperty FNumericProperty;
 typedef UInterfaceProperty FInterfaceProperty;
+
+#define CastField Cast;
 #endif
