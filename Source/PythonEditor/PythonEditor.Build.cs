@@ -26,6 +26,7 @@ namespace UnrealBuildTool.Rules
                 {
                     "Core",
                     "CoreUObject",
+                    "Engine",
                     "SlateCore",
                     "Slate",
                     "AssetTools",
@@ -38,7 +39,6 @@ namespace UnrealBuildTool.Rules
                     "DirectoryWatcher",
                     "LevelEditor",
                     "Projects",
-                    "Engine",
                     "UnrealEnginePython"
                 }
                 );

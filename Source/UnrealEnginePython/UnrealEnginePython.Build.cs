@@ -260,14 +260,16 @@ public class UnrealEnginePython : ModuleRules
         }
 #if WITH_FORWARDED_MODULE_RULES_CTOR
         else if (Target.Platform == UnrealTargetPlatform.Android)
-		{
+        {
             PublicIncludePaths.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/python35/include"));
             PublicAdditionalLibraries.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/armeabi-v7a"));
             PublicAdditionalLibraries.Add("python3.5m");
 
             string APLName = "UnrealEnginePython_APL.xml";
-            string RelAPLPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);
-            AdditionalPropertiesForReceipt.Add("AndroidPlugin", Path.Combine(RelAPLPath, APLName));
+            //string RelAPLPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);
+            //AdditionalPropertiesForReceipt.Add("AndroidPlugin", Path.Combine(RelAPLPath, APLName));
+            string RelAPLPath = Utils.MakePathRelativeTo(System.IO.Path.Combine(ModuleDirectory, APLName), Target.RelativeEnginePath);
+            AdditionalPropertiesForReceipt.Add("AndroidPlugin", RelAPLPath);
     
         }
 #endif
