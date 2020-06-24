@@ -4,8 +4,9 @@
 #include "LevelEditor.h"
 #include "Editor/LevelEditor/Public/ILevelViewport.h"
 #include "Editor/UnrealEd/Public/LevelEditorViewport.h"
+#if ENGINE_MINOR_VERSION >= 24
 #include "SLevelViewport.h"
-
+#endif
 #endif
 
 #include "Slate/UEPySWidget.h"
@@ -40,6 +41,19 @@ PyObject *py_unreal_engine_get_game_viewport_client(PyObject * self, PyObject * 
 }
 
 #if WITH_EDITOR
+
+namespace
+{
+	FLevelEditorViewportClient& get_viewport_client(FLevelEditorModule& EditorModule)
+	{
+#if ENGINE_MINOR_VERSION >= 24
+		return EditorModule.GetFirstActiveLevelViewport()->GetLevelViewportClient();
+#else
+		return EditorModule.GetFirstActiveViewport()->GetLevelViewportClient();
+#endif
+	}
+}
+
 PyObject *py_unreal_engine_get_editor_pie_game_viewport_client(PyObject * self, PyObject * args)
 {
 
@@ -61,13 +75,17 @@ PyObject *py_unreal_engine_editor_set_view_mode(PyObject * self, PyObject * args
 		return NULL;
 	}
 
-	FLevelEditorModule& LevelEditorModule = FModuleManager::GetModuleChecked<FLevelEditorModule>("LevelEditor");
-	TSharedPtr<SLevelViewport> ActiveLevelViewport = LevelEditorModule.GetFirstActiveLevelViewport();
+	FLevelEditorModule &EditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+#if ENGINE_MINOR_VERSION >= 24
+	TSharedPtr<SLevelViewport> ActiveLevelViewport = EditorModule.GetFirstActiveLevelViewport();
+#else
+	TSharedPtr<IAssetViewport> ActiveLevelViewport = EditorModule.GetFirstActiveViewport();
+#endif
 
 	if (!ActiveLevelViewport.IsValid())
 		return PyErr_Format(PyExc_Exception, "no active LevelEditor Viewport");
 
-	FLevelEditorViewportClient& LevelViewportClient = ActiveLevelViewport->GetLevelViewportClient();
+	FLevelEditorViewportClient &LevelViewportClient = get_viewport_client(EditorModule);
 
 	LevelViewportClient.SetViewMode((EViewModeIndex)mode);
 
@@ -84,14 +102,17 @@ PyObject *py_unreal_engine_editor_set_camera_speed(PyObject * self, PyObject * a
 		return NULL;
 	}
 
-
-	FLevelEditorModule& LevelEditorModule = FModuleManager::GetModuleChecked<FLevelEditorModule>("LevelEditor");
-	TSharedPtr<SLevelViewport> ActiveLevelViewport = LevelEditorModule.GetFirstActiveLevelViewport();
+	FLevelEditorModule &EditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+#if ENGINE_MINOR_VERSION >= 24
+	TSharedPtr<SLevelViewport> ActiveLevelViewport = EditorModule.GetFirstActiveLevelViewport();
+#else
+	TSharedPtr<IAssetViewport> ActiveLevelViewport = EditorModule.GetFirstActiveViewport();
+#endif
 
 	if (!ActiveLevelViewport.IsValid())
 		return PyErr_Format(PyExc_Exception, "no active LevelEditor Viewport");
 
-	FLevelEditorViewportClient& LevelViewportClient = ActiveLevelViewport->GetLevelViewportClient();
+	FLevelEditorViewportClient &LevelViewportClient = get_viewport_client(EditorModule);
 
 	LevelViewportClient.SetCameraSpeedSetting(speed);
 
@@ -112,13 +133,17 @@ PyObject *py_unreal_engine_editor_set_view_location(PyObject * self, PyObject * 
 	if (!vector)
 		return PyErr_Format(PyExc_Exception, "argument is not a FVector");
 
-	FLevelEditorModule& LevelEditorModule = FModuleManager::GetModuleChecked<FLevelEditorModule>("LevelEditor");
-	TSharedPtr<SLevelViewport> ActiveLevelViewport = LevelEditorModule.GetFirstActiveLevelViewport();
+	FLevelEditorModule &EditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+#if ENGINE_MINOR_VERSION >= 24
+	TSharedPtr<SLevelViewport> ActiveLevelViewport = EditorModule.GetFirstActiveLevelViewport();
+#else
+	TSharedPtr<IAssetViewport> ActiveLevelViewport = EditorModule.GetFirstActiveViewport();
+#endif
 
 	if (!ActiveLevelViewport.IsValid())
 		return PyErr_Format(PyExc_Exception, "no active LevelEditor Viewport");
 
-	FLevelEditorViewportClient& LevelViewportClient = ActiveLevelViewport->GetLevelViewportClient();
+	FLevelEditorViewportClient &LevelViewportClient = get_viewport_client(EditorModule);
 
 	LevelViewportClient.SetViewLocation(vector->vec);
 
@@ -139,13 +164,17 @@ PyObject *py_unreal_engine_editor_set_view_rotation(PyObject * self, PyObject * 
 	if (!rotator)
 		return PyErr_Format(PyExc_Exception, "argument is not a FRotator");
 
-	FLevelEditorModule& LevelEditorModule = FModuleManager::GetModuleChecked<FLevelEditorModule>("LevelEditor");
-	TSharedPtr<SLevelViewport> ActiveLevelViewport = LevelEditorModule.GetFirstActiveLevelViewport();
+	FLevelEditorModule &EditorModule = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
+#if ENGINE_MINOR_VERSION >= 24
+	TSharedPtr<SLevelViewport> ActiveLevelViewport = EditorModule.GetFirstActiveLevelViewport();
+#else
+	TSharedPtr<IAssetViewport> ActiveLevelViewport = EditorModule.GetFirstActiveViewport();
+#endif
 
 	if (!ActiveLevelViewport.IsValid())
 		return PyErr_Format(PyExc_Exception, "no active LevelEditor Viewport");
 
-	FLevelEditorViewportClient& LevelViewportClient = ActiveLevelViewport->GetLevelViewportClient();
+	FLevelEditorViewportClient &LevelViewportClient = get_viewport_client(EditorModule);
 
 	LevelViewportClient.SetViewRotation(rotator->rot);
 
