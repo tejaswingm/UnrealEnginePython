@@ -75,6 +75,9 @@ bool PyUnicodeOrString_Check(PyObject *py_obj);
 UNREALENGINEPYTHON_API void unreal_engine_py_log_error();
 UNREALENGINEPYTHON_API ue_PyUObject *ue_get_python_uobject(UObject *);
 UNREALENGINEPYTHON_API ue_PyUObject *ue_get_python_uobject_inc(UObject *);
+#if ENGINE_MINOR_VERSION >= 25
+UNREALENGINEPYTHON_API ue_PyUObject *ue_get_python_uobject(FFieldClass *);
+#endif
 
 #define Py_RETURN_UOBJECT(py_uobj) ue_PyUObject *ret = ue_get_python_uobject_inc(py_uobj);\
 	if (!ret)\

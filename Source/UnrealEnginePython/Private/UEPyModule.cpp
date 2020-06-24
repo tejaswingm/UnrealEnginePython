@@ -1889,6 +1889,42 @@ ue_PyUObject* ue_get_python_uobject(UObject* ue_obj)
 
 }
 
+#if ENGINE_MINOR_VERSION >= 25
+ue_PyUObject* ue_get_python_uobject(FFieldClass* ue_field_class)
+{
+	return nullptr;
+	//if (!ue_obj)
+	//	return nullptr;
+	//Todo: fill this function
+//	ue_PyUObject* ret = FUnrealEnginePythonHouseKeeper::Get()->GetPyUObject(ue_obj);
+//	if (!ret)
+//	{
+//		if (!ue_obj->IsValidLowLevel() || ue_obj->IsPendingKillOrUnreachable())
+//			return nullptr;
+//
+//		ue_PyUObject* ue_py_object = (ue_PyUObject*)PyObject_New(ue_PyUObject, &ue_PyUObjectType);
+//		if (!ue_py_object)
+//		{
+//			return nullptr;
+//		}
+//		ue_py_object->ue_object = ue_obj;
+//		ue_py_object->py_proxy = nullptr;
+//		ue_py_object->auto_rooted = 0;
+//		ue_py_object->py_dict = PyDict_New();
+//		ue_py_object->owned = 0;
+//
+//		FUnrealEnginePythonHouseKeeper::Get()->RegisterPyUObject(ue_obj, ue_py_object);
+//
+//#if defined(UEPY_MEMORY_DEBUG)
+//		UE_LOG(LogPython, Warning, TEXT("CREATED UPyObject at %p for %p %s"), ue_py_object, ue_obj, *ue_obj->GetName());
+//#endif
+//		return ue_py_object;
+//	}
+//	return ret;
+
+}
+#endif
+
 ue_PyUObject* ue_get_python_uobject_inc(UObject* ue_obj)
 {
 	ue_PyUObject* ret = ue_get_python_uobject(ue_obj);
