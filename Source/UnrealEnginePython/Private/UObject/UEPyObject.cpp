@@ -1300,7 +1300,17 @@ PyObject *py_ue_get_uproperty(ue_PyUObject *self, PyObject * args)
 	if (!u_property)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
 
+#if ENGINE_MINOR_VERSION >= 25
+	// TODO : Check if this is correct
+	auto val = u_property->GetOwnerUObject();
+	if (val)
+	{
+		Py_RETURN_UOBJECT(val);
+	}
+	Py_RETURN_NONE;
+#else
 	Py_RETURN_UOBJECT(u_property);
+#endif
 
 }
 
@@ -1317,7 +1327,17 @@ PyObject *py_ue_get_inner(ue_PyUObject *self, PyObject * args)
 	if (!inner)
 		Py_RETURN_NONE;
 
+#if ENGINE_MINOR_VERSION >= 25
+	// TODO : Check if this is correct
+	auto val = inner->GetOwnerUObject();
+	if (val)
+	{
+		Py_RETURN_UOBJECT(val);
+	}
+	Py_RETURN_NONE;
+#else
 	Py_RETURN_UOBJECT(inner);
+#endif
 }
 
 PyObject *py_ue_get_key_prop(ue_PyUObject *self, PyObject * args)
@@ -1333,7 +1353,17 @@ PyObject *py_ue_get_key_prop(ue_PyUObject *self, PyObject * args)
 	if (!key)
 		Py_RETURN_NONE;
 
+#if ENGINE_MINOR_VERSION >= 25
+	// TODO : Check if this is correct
+	auto val = key->GetOwnerUObject();
+	if (val)
+	{
+		Py_RETURN_UOBJECT(val);
+	}
+	Py_RETURN_NONE;
+#else
 	Py_RETURN_UOBJECT(key);
+#endif
 }
 
 PyObject *py_ue_get_value_prop(ue_PyUObject *self, PyObject * args)
@@ -1349,7 +1379,17 @@ PyObject *py_ue_get_value_prop(ue_PyUObject *self, PyObject * args)
 	if (!value)
 		Py_RETURN_NONE;
 
+#if ENGINE_MINOR_VERSION >= 25
+	// TODO : Check if this is correct
+	auto val = value->GetOwnerUObject();
+	if (val)
+	{
+		Py_RETURN_UOBJECT(val);
+	}
+	Py_RETURN_NONE;
+#else
 	Py_RETURN_UOBJECT(value);
+#endif
 }
 
 PyObject *py_ue_has_property(ue_PyUObject *self, PyObject * args)
@@ -1406,7 +1446,17 @@ PyObject *py_ue_get_property_class(ue_PyUObject *self, PyObject * args)
 	if (!u_property)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
 
+#if ENGINE_MINOR_VERSION >= 25
+	// TODO : Check if this is correct
+	auto val = u_property->GetOwnerUObject();
+	if (val)
+	{
+		Py_RETURN_UOBJECT(val);
+	}
+	Py_RETURN_NONE;
+#else
 	Py_RETURN_UOBJECT(u_property->GetClass());
+#endif
 
 }
 
@@ -1740,7 +1790,12 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 #endif
 				if (!u_array)
 					return PyErr_Format(PyExc_Exception, "unable to allocate new FProperty");
+#if ENGINE_MINOR_VERSION >= 25
+				// TODO: Check if this is correct
+				scope = u_array->GetOwnerUObject();
+#else
 				scope = u_array;
+#endif
 				is_array = true;
 			}
 			Py_DECREF(py_item);
@@ -1791,7 +1846,12 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 #endif
 				if (!u_map)
 					return PyErr_Format(PyExc_Exception, "unable to allocate new FProperty");
+#if ENGINE_MINOR_VERSION >= 25
+				// TODO: Check if this is correct
+				scope = u_map->GetOwnerUObject();
+#else
 				scope = u_map;
+#endif
 				is_map = true;
 			}
 			Py_DECREF(py_key);
@@ -1994,7 +2054,17 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 
 	// TODO add default value
 
+#if ENGINE_MINOR_VERSION >= 25
+	// TODO : Check if this is correct
+	auto val = u_property->GetOwnerUObject();
+	if (val)
+	{
+		Py_RETURN_UOBJECT(val);
+	}
+	Py_RETURN_NONE;
+#else
 	Py_RETURN_UOBJECT(u_property);
+#endif
 	}
 
 PyObject *py_ue_as_dict(ue_PyUObject * self, PyObject * args)
