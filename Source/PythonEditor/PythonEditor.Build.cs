@@ -13,7 +13,7 @@ namespace UnrealBuildTool.Rules
 
             PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
             string enableUnityBuild = System.Environment.GetEnvironmentVariable("UEP_ENABLE_UNITY_BUILD");
-            bFasterWithoutUnity = string.IsNullOrEmpty(enableUnityBuild);
+            bUseUnity = string.IsNullOrEmpty(enableUnityBuild);
 
             PrivateIncludePaths.AddRange(
                 new string[] {
@@ -26,6 +26,7 @@ namespace UnrealBuildTool.Rules
                 {
                     "Core",
                     "CoreUObject",
+                    "Engine",
                     "SlateCore",
                     "Slate",
                     "AssetTools",
@@ -33,7 +34,7 @@ namespace UnrealBuildTool.Rules
                     "EditorStyle",
                     "PropertyEditor",
                     "Kismet",  // for FWorkflowCentricApplication
-					"InputCore",
+                    "InputCore",
                     "DirectoryWatcher",
                     "LevelEditor",
                     "Projects",

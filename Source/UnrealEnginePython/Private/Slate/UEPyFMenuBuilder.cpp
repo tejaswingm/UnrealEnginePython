@@ -1,5 +1,4 @@
 #include "UEPyFMenuBuilder.h"
-
 #include "Wrappers/UEPyESlateEnums.h"
 
 static PyObject* py_ue_fmenu_builder_begin_section(ue_PyFMenuBuilder* self, PyObject* args)
@@ -139,9 +138,15 @@ static PyObject* py_ue_fmenu_builder_add_asset_actions(ue_PyFMenuBuilder* self, 
 	}
 	Py_DECREF(py_assets);
 
+#if ENGINE_MINOR_VERSION >= 24
+	FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+	TArray<FContentBrowserMenuExtender_SelectedAssets>& AssetMenuExtenderDelegates = ContentBrowserModule.GetAllAssetViewContextMenuExtenders();
+	if (AssetMenuExtenderDelegates.Num() > 0)
+#else
 	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
 	bool addedSomething = AssetToolsModule.Get().GetAssetActions(u_objects, self->menu_builder, true);
 	if (addedSomething)
+#endif
 	{
 		Py_RETURN_TRUE;
 	}

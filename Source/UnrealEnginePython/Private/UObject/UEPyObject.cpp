@@ -652,10 +652,12 @@ PyObject *py_ue_can_modify(ue_PyUObject *self, PyObject * args)
 
 	ue_py_check(self);
 
+#if WITH_EDITOR
 	if (self->ue_object->CanModify())
 	{
 		Py_RETURN_TRUE;
 	}
+#endif
 
 	Py_RETURN_FALSE;
 }
