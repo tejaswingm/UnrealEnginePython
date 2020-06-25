@@ -18,7 +18,7 @@ public class UnrealEnginePython : ModuleRules
 
     private string[] windowsKnownPaths =
     {
-       // "C:/Program Files/Python37",
+        "C:/Program Files/Python37",
         "C:/Program Files/Python36",
         "C:/Program Files/Python35",
         "C:/Python27",
@@ -95,6 +95,7 @@ public class UnrealEnginePython : ModuleRules
     {
 
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+        PublicDefinitions.Add("WITH_UNREALENGINEPYTHON=1"); // fixed
         string enableUnityBuild = System.Environment.GetEnvironmentVariable("UEP_ENABLE_UNITY_BUILD");
         bUseUnity = string.IsNullOrEmpty(enableUnityBuild);
 
@@ -263,8 +264,9 @@ public class UnrealEnginePython : ModuleRules
             PublicAdditionalLibraries.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/armeabi-v7a", "python3.5m"));
 
             string APLName = "UnrealEnginePython_APL.xml";
-            string RelAPLPath = Utils.MakePathRelativeTo(System.IO.Path.Combine(ModuleDirectory, APLName), Target.RelativeEnginePath);
-            AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", RelAPLPath));
+            string RelAPLPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);
+            AdditionalPropertiesForReceipt.Add(new ReceiptProperty("AndroidPlugin", Path.Combine(RelAPLPath, APLName)));
+    
         }
 #endif
 

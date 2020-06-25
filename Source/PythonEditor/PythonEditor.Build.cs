@@ -33,6 +33,7 @@ namespace UnrealBuildTool.Rules
                     "UnrealEd",
                     "EditorStyle",
                     "PropertyEditor",
+                    "ContentBrowser",
                     "Kismet",  // for FWorkflowCentricApplication
                     "InputCore",
                     "DirectoryWatcher",
