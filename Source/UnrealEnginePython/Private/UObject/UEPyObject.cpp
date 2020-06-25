@@ -190,7 +190,7 @@ PyObject *py_ue_get_property_struct(ue_PyUObject * self, PyObject * args)
 	if (!u_property)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", property_name);
 
-	FStructProperty *prop = Cast<FStructProperty>(u_property);
+	FStructProperty *prop = CastField<FStructProperty>(u_property);
 	if (!prop)
 		return PyErr_Format(PyExc_Exception, "object is not a StructProperty");
 	return py_ue_new_uscriptstruct(prop->Struct, prop->ContainerPtrToValuePtr<uint8>(self->ue_object));
@@ -1084,7 +1084,7 @@ PyObject *py_ue_broadcast(ue_PyUObject *self, PyObject *args)
 	if (!u_property)
 		return PyErr_Format(PyExc_Exception, "unable to find event property %s", property_name);
 
-	if (auto casted_prop = Cast<FMulticastDelegateProperty>(u_property))
+	if (auto casted_prop = CastField<FMulticastDelegateProperty>(u_property))
 	{
 #if ENGINE_MINOR_VERSION >= 23
 		FMulticastScriptDelegate multiscript_delegate = *casted_prop->GetMulticastDelegate(self->ue_object);
@@ -1557,7 +1557,7 @@ PyObject *py_ue_delegate_bind_ufunction(ue_PyUObject * self, PyObject * args)
 	if (!u_property)
 		return PyErr_Format(PyExc_Exception, "unable to find property %s", delegate_name);
 
-	FDelegateProperty *Prop = Cast<FDelegateProperty>(u_property);
+	FDelegateProperty *Prop = CastField<FDelegateProperty>(u_property);
 	if (!Prop)
 		return PyErr_Format(PyExc_Exception, "property is not a FDelegateProperty");
 
