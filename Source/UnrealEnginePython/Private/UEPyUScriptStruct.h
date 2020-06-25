@@ -1,7 +1,6 @@
 #pragma once
 
 #include "UEPyModule.h"
-#include "UObject/UEPyUPropertyBackwardsCompatibility.h"
 
 typedef struct
 {

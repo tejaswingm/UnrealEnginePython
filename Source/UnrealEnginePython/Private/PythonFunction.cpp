@@ -1,7 +1,6 @@
 
 #include "PythonFunction.h"
 #include "UEPyModule.h"
-#include "UObject/UEPyUPropertyBackwardsCompatibility.h"
 
 
 void UPythonFunction::SetPyCallable(PyObject *callable)

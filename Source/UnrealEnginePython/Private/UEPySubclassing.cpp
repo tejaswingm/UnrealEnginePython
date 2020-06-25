@@ -1,7 +1,6 @@
 #include "UEPyModule.h"
 #include "PythonClass.h"
 #include "UObject/UEPyObject.h"
-#include "UObject/UEPyUPropertyBackwardsCompatibility.h"
 
 // hack for avoiding loops in class constructors (thanks to the Unreal.js project for the idea)
 UClass *ue_py_class_constructor_placeholder = nullptr;

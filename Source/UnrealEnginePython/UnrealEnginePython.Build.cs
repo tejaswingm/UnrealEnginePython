@@ -261,7 +261,7 @@ public class UnrealEnginePython : ModuleRules
         else if (Target.Platform == UnrealTargetPlatform.Android)
         {
             PublicIncludePaths.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/python35/include"));
-            PublicAdditionalLibraries.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/armeabi-v7a", "python3.5m"));
+            PublicAdditionalLibraries.Add(System.IO.Path.Combine(ModuleDirectory, "../../android/armeabi-v7a", "libpython3.5m.so"));
 
             string APLName = "UnrealEnginePython_APL.xml";
             string RelAPLPath = Utils.MakePathRelativeTo(ModuleDirectory, Target.RelativeEnginePath);

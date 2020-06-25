@@ -1379,6 +1379,8 @@ PyObject *py_unreal_engine_reload_blueprint(PyObject * self, PyObject * args)
 
 	Py_BEGIN_ALLOW_THREADS
 #if ENGINE_MINOR_VERSION >= 24
+		// TODO: Looks like it doesn't do anything if the replacement bp is same as the current bp.
+		// Keep it? or just throw error saying call `py_unreal_engine_replace_blueprint` instead?
 		reloaded_bp = FKismetEditorUtilities::ReplaceBlueprint(bp, bp);
 #else
 		reloaded_bp = FKismetEditorUtilities::ReloadBlueprint(bp;
