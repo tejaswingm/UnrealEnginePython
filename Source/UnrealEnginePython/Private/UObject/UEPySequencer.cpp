@@ -230,10 +230,20 @@ PyObject *py_ue_sequencer_changed(ue_PyUObject *self, PyObject * args)
 	if (py_bool && PyObject_IsTrue(py_bool))
 	{
 		// try to open the editor for the asset
+#if ENGINE_MINOR_VERSION >= 24
+		UAssetEditorSubsystem* AssetEditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+		AssetEditorSubsystem->OpenEditorForAsset(seq);
+#else
 		FAssetEditorManager::Get().OpenEditorForAsset(seq);
+#endif
 	}
 
+#if ENGINE_MINOR_VERSION >= 24
+	UAssetEditorSubsystem* AssetEditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+	IAssetEditorInstance *editor = AssetEditorSubsystem->FindEditorForAsset(seq, true);
+#else
 	IAssetEditorInstance *editor = FAssetEditorManager::Get().FindEditorForAsset(seq, true);
+#endif
 	if (editor)
 	{
 		FLevelSequenceEditorToolkit *toolkit = (FLevelSequenceEditorToolkit *)editor;
@@ -464,9 +474,15 @@ PyObject *py_ue_sequencer_add_actor(ue_PyUObject *self, PyObject * args)
 	actors.Add((AActor *)py_ue_obj->ue_object);
 
 	// try to open the editor for the asset
+#if ENGINE_MINOR_VERSION >= 24
+	UAssetEditorSubsystem* AssetEditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+	AssetEditorSubsystem->OpenEditorForAsset(seq);
+	IAssetEditorInstance *editor = AssetEditorSubsystem->FindEditorForAsset(seq, true);
+#else
 	FAssetEditorManager::Get().OpenEditorForAsset(seq);
-
 	IAssetEditorInstance *editor = FAssetEditorManager::Get().FindEditorForAsset(seq, true);
+#endif
+
 	if (editor)
 	{
 		FLevelSequenceEditorToolkit *toolkit = (FLevelSequenceEditorToolkit *)editor;
@@ -519,9 +535,15 @@ PyObject *py_ue_sequencer_add_actor_component(ue_PyUObject *self, PyObject * arg
 	UActorComponent* actorComponent = (UActorComponent *)py_ue_obj->ue_object;
 
 	// try to open the editor for the asset
+#if ENGINE_MINOR_VERSION >= 24
+	UAssetEditorSubsystem* AssetEditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+	AssetEditorSubsystem->OpenEditorForAsset(seq);
+	IAssetEditorInstance *editor = AssetEditorSubsystem->FindEditorForAsset(seq, true);
+#else
 	FAssetEditorManager::Get().OpenEditorForAsset(seq);
-
 	IAssetEditorInstance *editor = FAssetEditorManager::Get().FindEditorForAsset(seq, true);
+#endif
+
 	FGuid new_guid;
 	if (editor)
 	{
@@ -568,9 +590,15 @@ PyObject *py_ue_sequencer_make_new_spawnable(ue_PyUObject *self, PyObject * args
 	ULevelSequence *seq = (ULevelSequence *)self->ue_object;
 
 	// try to open the editor for the asset
+#if ENGINE_MINOR_VERSION >= 24
+	UAssetEditorSubsystem* AssetEditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+	AssetEditorSubsystem->OpenEditorForAsset(seq);
+	IAssetEditorInstance *editor = AssetEditorSubsystem->FindEditorForAsset(seq, true);
+#else
 	FAssetEditorManager::Get().OpenEditorForAsset(seq);
-
 	IAssetEditorInstance *editor = FAssetEditorManager::Get().FindEditorForAsset(seq, true);
+#endif
+
 	if (!editor)
 	{
 		return PyErr_Format(PyExc_Exception, "unable to access sequencer");
