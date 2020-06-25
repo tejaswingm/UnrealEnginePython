@@ -3264,7 +3264,11 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 
 	PyObject* annotations = PyObject_GetAttrString(py_callable, "__annotations__");
 
+#if ENGINE_MINOR_VERSION >= 25
+	FField** next_property = &function->ChildProperties;
+#else
 	UField** next_property = &function->Children;
+#endif
 	FProperty** next_property_link = &function->PropertyLink;
 
 	PyObject* parameters_keys = PyObject_GetIter(parameters);
@@ -3293,60 +3297,104 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 		{
 			if ((PyTypeObject*)value == &PyFloat_Type)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				prop = new FFloatProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				prop = NewObject<FFloatProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 			}
 			else if ((PyTypeObject*)value == &PyUnicode_Type)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				prop = new FStrProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				prop = NewObject<FStrProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 			}
 			else if ((PyTypeObject*)value == &PyBool_Type)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				prop = new FBoolProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				prop = NewObject<FBoolProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 			}
 			else if ((PyTypeObject*)value == &PyLong_Type)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				prop = new FIntProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				prop = NewObject<FIntProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 			}
 			else if ((PyTypeObject*)value == &ue_PyFVectorType)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_struct->Struct = TBaseStructure<FVector>::Get();
 				prop = prop_struct;
 			}
 			else if ((PyTypeObject*)value == &ue_PyFVector2DType)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_struct->Struct = TBaseStructure<FVector2D>::Get();
 				prop = prop_struct;
 			}
 			else if ((PyTypeObject*)value == &ue_PyFRotatorType)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_struct->Struct = TBaseStructure<FRotator>::Get();
 				prop = prop_struct;
 			}
 			else if ((PyTypeObject*)value == &ue_PyFLinearColorType)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_struct->Struct = TBaseStructure<FLinearColor>::Get();
 				prop = prop_struct;
 			}
 			else if ((PyTypeObject*)value == &ue_PyFColorType)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_struct->Struct = TBaseStructure<FColor>::Get();
 				prop = prop_struct;
 			}
 			else if ((PyTypeObject*)value == &ue_PyFTransformType)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_struct->Struct = TBaseStructure<FTransform>::Get();
 				prop = prop_struct;
 			}
 #if ENGINE_MINOR_VERSION > 18
 			else if ((PyTypeObject*)value == &ue_PyFQuatType)
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_struct->Struct = TBaseStructure<FQuat>::Get();
 				prop = prop_struct;
 			}
@@ -3380,7 +3428,11 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 					UE_LOG(LogPython, Error, TEXT("type for %s must be a UClass"), UTF8_TO_TCHAR(name));
 					return nullptr;
 				}
+#if ENGINE_MINOR_VERSION >= 25
+				FClassProperty* prop_class = new FClassProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FClassProperty* prop_class = NewObject<FClassProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_class->SetMetaClass((UClass*)py_obj->ue_object);
 				prop_class->PropertyClass = UClass::StaticClass();
 				prop = prop_class;
@@ -3392,15 +3444,24 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 			if (py_obj->ue_object->IsA<UClass>())
 			{
 				UClass* p_u_class = (UClass*)py_obj->ue_object;
+#if ENGINE_MINOR_VERSION >= 25
+				FObjectProperty* prop_base = new FObjectProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FObjectProperty* prop_base = NewObject<FObjectProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_base->SetPropertyClass(p_u_class);
 				prop = prop_base;
 			}
 #if ENGINE_MINOR_VERSION > 17
 			else if (py_obj->ue_object->IsA<UEnum>())
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FEnumProperty* prop_enum = new FEnumProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+				FNumericProperty* prop_underlying = new FByteProperty(prop_enum, TEXT("UnderlyingType"), RF_Public);
+#else
 				FEnumProperty* prop_enum = NewObject<FEnumProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
 				FNumericProperty* prop_underlying = NewObject<FByteProperty>(prop_enum, TEXT("UnderlyingType"), RF_Public);
+#endif
 				prop_enum->SetEnum((UEnum*)py_obj->ue_object);
 				prop_enum->AddCppProperty(prop_underlying);
 				prop = prop_enum;
@@ -3408,7 +3469,11 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 #endif
 			else if (py_obj->ue_object->IsA<UStruct>())
 			{
+#if ENGINE_MINOR_VERSION >= 25
+				FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 				FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				prop_struct->Struct = (UScriptStruct*)py_obj->ue_object;
 				prop = prop_struct;
 			}
@@ -3442,60 +3507,104 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 			{
 				if ((PyTypeObject*)py_return_value == &PyFloat_Type)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					prop = new FFloatProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					prop = NewObject<FFloatProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				}
 				else if ((PyTypeObject*)py_return_value == &PyUnicode_Type)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					prop = new FStrProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					prop = NewObject<FStrProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				}
 				else if ((PyTypeObject*)py_return_value == &PyBool_Type)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					prop = new FBoolProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					prop = NewObject<FBoolProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				}
 				else if ((PyTypeObject*)py_return_value == &PyLong_Type)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					prop = new FIntProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					prop = NewObject<FIntProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 				}
 				else if ((PyTypeObject*)py_return_value == &ue_PyFVectorType)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_struct->Struct = TBaseStructure<FVector>::Get();
 					prop = prop_struct;
 				}
 				else if ((PyTypeObject*)py_return_value == &ue_PyFVector2DType)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_struct->Struct = TBaseStructure<FVector2D>::Get();
 					prop = prop_struct;
 				}
 				else if ((PyTypeObject*)py_return_value == &ue_PyFRotatorType)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_struct->Struct = TBaseStructure<FRotator>::Get();
 					prop = prop_struct;
 				}
 				else if ((PyTypeObject*)py_return_value == &ue_PyFLinearColorType)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_struct->Struct = TBaseStructure<FLinearColor>::Get();
 					prop = prop_struct;
 				}
 				else if ((PyTypeObject*)py_return_value == &ue_PyFColorType)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_struct->Struct = TBaseStructure<FColor>::Get();
 					prop = prop_struct;
 				}
 				else if ((PyTypeObject*)py_return_value == &ue_PyFTransformType)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_struct->Struct = TBaseStructure<FTransform>::Get();
 					prop = prop_struct;
 				}
 #if ENGINE_MINOR_VERSION > 18
 				else if ((PyTypeObject*)py_return_value == &ue_PyFQuatType)
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_struct->Struct = TBaseStructure<FQuat>::Get();
 					prop = prop_struct;
 				}
@@ -3529,7 +3638,11 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 						UE_LOG(LogPython, Error, TEXT("type for %s must be a UClass"), UTF8_TO_TCHAR(name));
 						return nullptr;
 					}
+#if ENGINE_MINOR_VERSION >= 25
+					FClassProperty* prop_class = new FClassProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FClassProperty* prop_class = NewObject<FClassProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_class->SetMetaClass((UClass*)py_obj->ue_object);
 					prop_class->PropertyClass = UClass::StaticClass();
 					prop = prop_class;
@@ -3541,15 +3654,24 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 				if (py_obj->ue_object->IsA<UClass>())
 				{
 					UClass* p_u_class = (UClass*)py_obj->ue_object;
+#if ENGINE_MINOR_VERSION >= 25
+					FObjectProperty* prop_base = new FObjectProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FObjectProperty* prop_base = NewObject<FObjectProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_base->SetPropertyClass(p_u_class);
 					prop = prop_base;
 				}
 #if ENGINE_MINOR_VERSION > 17
 				else if (py_obj->ue_object->IsA<UEnum>())
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FEnumProperty* prop_enum = new FEnumProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+					FNumericProperty* prop_underlying = new FByteProperty(prop_enum, TEXT("UnderlyingType"), RF_Public);
+#else
 					FEnumProperty* prop_enum = NewObject<FEnumProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
 					FNumericProperty* prop_underlying = NewObject<FByteProperty>(prop_enum, TEXT("UnderlyingType"), RF_Public);
+#endif
 					prop_enum->SetEnum((UEnum*)py_obj->ue_object);
 					prop_enum->AddCppProperty(prop_underlying);
 					prop = prop_enum;
@@ -3557,7 +3679,11 @@ UFunction* unreal_engine_add_function(UClass* u_class, char* name, PyObject* py_
 #endif
 				else if (py_obj->ue_object->IsA<UStruct>())
 				{
+#if ENGINE_MINOR_VERSION >= 25
+					FStructProperty* prop_struct = new FStructProperty(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#else
 					FStructProperty* prop_struct = NewObject<FStructProperty>(function, UTF8_TO_TCHAR(p_name), RF_Public);
+#endif
 					prop_struct->Struct = (UScriptStruct*)py_obj->ue_object;
 					prop = prop_struct;
 				}

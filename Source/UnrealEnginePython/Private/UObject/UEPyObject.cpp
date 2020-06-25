@@ -1713,7 +1713,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 					return PyErr_Format(PyExc_Exception, "uobject is not a FProperty");
 				if (u_class == FArrayProperty::StaticClass())
 					return PyErr_Format(PyExc_Exception, "please use a single-item list of property for arrays");
+#if ENGINE_MINOR_VERSION >= 25
+				FArrayProperty *u_array = new FArrayProperty(self->ue_object, UTF8_TO_TCHAR(name), o_flags);
+#else
 				FArrayProperty *u_array = NewObject<FArrayProperty>(self->ue_object, UTF8_TO_TCHAR(name), o_flags);
+#endif
 				if (!u_array)
 					return PyErr_Format(PyExc_Exception, "unable to allocate new FProperty");
 				scope = u_array;
@@ -1752,8 +1756,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 				if (u_class2 == FArrayProperty::StaticClass())
 					return PyErr_Format(PyExc_Exception, "please use a two-items list of properties for maps");
 
-
+#if ENGINE_MINOR_VERSION >= 25
+				FMapProperty *u_map = new FMapProperty(self->ue_object, UTF8_TO_TCHAR(name), o_flags);
+#else
 				FMapProperty *u_map = NewObject<FMapProperty>(self->ue_object, UTF8_TO_TCHAR(name), o_flags);
+#endif
 				if (!u_map)
 					return PyErr_Format(PyExc_Exception, "unable to allocate new FProperty");
 				scope = u_map;
@@ -1771,7 +1778,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 		return PyErr_Format(PyExc_Exception, "argument is not a UObject or a single item list");
 	}
 
+#if ENGINE_MINOR_VERSION >= 25
+	u_property = new FProperty(scope, /*u_class,*/ UTF8_TO_TCHAR(name), o_flags);
+#else
 	u_property = NewObject<FProperty>(scope, u_class, UTF8_TO_TCHAR(name), o_flags);
+#endif
 	if (!u_property)
 	{
 		if (is_array || is_map)
@@ -1826,7 +1837,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 #if ENGINE_MINOR_VERSION >= 15
 	if (is_map)
 	{
+#if ENGINE_MINOR_VERSION >= 25
+		u_property2 = new FProperty(scope, /*u_class2,*/ NAME_None, o_flags);
+#else
 		u_property2 = NewObject<FProperty>(scope, u_class2, NAME_None, o_flags);
+#endif
 		if (!u_property2)
 		{
 			if (is_array || is_map)
