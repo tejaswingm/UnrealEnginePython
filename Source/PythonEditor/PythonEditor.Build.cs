@@ -34,7 +34,7 @@ namespace UnrealBuildTool.Rules
                     "EditorStyle",
                     "PropertyEditor",
                     "Kismet",  // for FWorkflowCentricApplication
-					"InputCore",
+                    "InputCore",
                     "DirectoryWatcher",
                     "LevelEditor",
                     "Projects",

@@ -1359,9 +1359,6 @@ PyObject *py_unreal_engine_get_blueprint_hierarchy_from_class(PyObject * self, P
 
 PyObject *py_unreal_engine_reload_blueprint(PyObject * self, PyObject * args)
 {
-#if ENGINE_MINOR_VERSION >= 24
-	return PyErr_Format(PyExc_Exception, "Functionality not supported in UE 4.24");
-#else
 
 	PyObject *py_blueprint;
 	if (!PyArg_ParseTuple(args, "O:reload_blueprint", &py_blueprint))
@@ -1381,11 +1378,14 @@ PyObject *py_unreal_engine_reload_blueprint(PyObject * self, PyObject * args)
 	UBlueprint *reloaded_bp = nullptr;
 
 	Py_BEGIN_ALLOW_THREADS
-		reloaded_bp = FKismetEditorUtilities::ReloadBlueprint(bp);
+#if ENGINE_MINOR_VERSION >= 24
+		reloaded_bp = FKismetEditorUtilities::ReplaceBlueprint(bp, bp);
+#else
+		reloaded_bp = FKismetEditorUtilities::ReloadBlueprint(bp;
+#endif
 	Py_END_ALLOW_THREADS
 
 		Py_RETURN_UOBJECT(reloaded_bp);
-#endif
 }
 
 PyObject *py_unreal_engine_compile_blueprint(PyObject * self, PyObject * args)
