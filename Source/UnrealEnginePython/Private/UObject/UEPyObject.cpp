@@ -1631,9 +1631,17 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 	UObject *scope = nullptr;
 
 	FProperty *u_property = nullptr;
+#if ENGINE_MINOR_VERSION >= 25
+	FFieldClass *u_class = nullptr;
+#else
 	UClass *u_class = nullptr;
+#endif
 	FProperty *u_property2 = nullptr;
+#if ENGINE_MINOR_VERSION >= 25
+	FFieldClass *u_class2 = nullptr;
+#else
 	UClass *u_class2 = nullptr;
+#endif
 
 	UClass *u_prop_class = nullptr;
 	UScriptStruct *u_script_struct = nullptr;
@@ -1693,7 +1701,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 		{
 			return PyErr_Format(PyExc_Exception, "uobject is not a UClass");
 		}
+#if ENGINE_MINOR_VERSION >= 25
+		u_class = (FFieldClass *)py_obj->ue_object;
+#else
 		u_class = (UClass *)py_obj->ue_object;
+#endif
 		if (!u_class->IsChildOf<FProperty>())
 			return PyErr_Format(PyExc_Exception, "uobject is not a FProperty");
 		if (u_class == FArrayProperty::StaticClass())
@@ -1712,7 +1724,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 				{
 					return PyErr_Format(PyExc_Exception, "uobject is not a UClass");
 				}
+#if ENGINE_MINOR_VERSION >= 25
+				u_class = (FFieldClass *)py_obj->ue_object;
+#else
 				u_class = (UClass *)py_obj->ue_object;
+#endif
 				if (!u_class->IsChildOf<FProperty>())
 					return PyErr_Format(PyExc_Exception, "uobject is not a FProperty");
 				if (u_class == FArrayProperty::StaticClass())
@@ -1742,7 +1758,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 				{
 					return PyErr_Format(PyExc_Exception, "uobject is not a UClass");
 				}
+#if ENGINE_MINOR_VERSION >= 25
+				u_class = (FFieldClass *)py_obj->ue_object;
+#else
 				u_class = (UClass *)py_obj->ue_object;
+#endif
 				if (!u_class->IsChildOf<FProperty>())
 					return PyErr_Format(PyExc_Exception, "uobject is not a FProperty");
 				if (u_class == FArrayProperty::StaticClass())
@@ -1754,7 +1774,11 @@ PyObject *py_ue_add_property(ue_PyUObject * self, PyObject * args)
 				{
 					return PyErr_Format(PyExc_Exception, "uobject is not a UClass");
 				}
+#if ENGINE_MINOR_VERSION >= 25
+				u_class2 = (FFieldClass *)py_obj2->ue_object;
+#else
 				u_class2 = (UClass *)py_obj2->ue_object;
+#endif
 				if (!u_class2->IsChildOf<FProperty>())
 					return PyErr_Format(PyExc_Exception, "uobject is not a FProperty");
 				if (u_class2 == FArrayProperty::StaticClass())
