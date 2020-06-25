@@ -572,7 +572,11 @@ static PyMethodDef ue_PyUObject_methods[] = {
 	{ "properties", (PyCFunction)py_ue_properties, METH_VARARGS, "" },
 	{ "get_property_class", (PyCFunction)py_ue_get_property_class, METH_VARARGS, "" },
 	{ "has_property", (PyCFunction)py_ue_has_property, METH_VARARGS, "" },
-	{ "get_FProperty", (PyCFunction)py_ue_get_uproperty, METH_VARARGS, "" },
+#if ENGINE_MINOR_VERSION >= 25
+	{ "get_fproperty", (PyCFunction)py_ue_get_fproperty, METH_VARARGS, "" },
+#else
+	{ "get_uproperty", (PyCFunction)py_ue_get_uproperty, METH_VARARGS, "" },
+#endif
 	{ "get_property_struct", (PyCFunction)py_ue_get_property_struct, METH_VARARGS, "" },
 	{ "get_property_array_dim", (PyCFunction)py_ue_get_property_array_dim, METH_VARARGS, "" },
 	{ "get_inner", (PyCFunction)py_ue_get_inner, METH_VARARGS, "" },
