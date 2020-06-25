@@ -55,8 +55,8 @@ static PyObject *py_ue_command_apply(PyObject *cls, PyObject * args)
 	}
 
 #if ENGINE_MINOR_VERSION >= 24
-	UAssetEditorSubsystem* AssetEditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
-	IAssetEditorInstance* Instance = AssetEditorSubsystem->FindEditorForAsset(Material, false);
+	UAssetEditorSubsystem *AssetEditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();
+	IAssetEditorInstance *Instance = AssetEditorSubsystem->FindEditorForAsset(Material, false);
 #else
 	IAssetEditorInstance *Instance = FAssetEditorManager::Get().FindEditorForAsset(Material, false);
 #endif
