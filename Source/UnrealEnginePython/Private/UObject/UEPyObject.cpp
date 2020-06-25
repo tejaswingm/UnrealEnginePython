@@ -1270,7 +1270,11 @@ PyObject *py_ue_render_thumbnail(ue_PyUObject *self, PyObject * args)
 }
 #endif
 
-PyObject *py_ue_get_FProperty(ue_PyUObject *self, PyObject * args)
+#if ENGINE_MINOR_VERSION >= 25
+PyObject *py_ue_get_fproperty(ue_PyUObject *self, PyObject * args)
+#else
+PyObject *py_ue_get_uproperty(ue_PyUObject *self, PyObject * args)
+#endif
 {
 
 	ue_py_check(self);
